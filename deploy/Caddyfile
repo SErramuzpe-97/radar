@@ -1,0 +1,8 @@
+# Caddy (gratis) termina TLS con certificado Let's Encrypt automático para
+# radar-navarra.duckdns.org y hace reverse proxy al binario local (127.0.0.1:7800).
+# Requisitos: duckdns apuntando a la IP pública del equipo (scripts/duckdns-update.sh)
+# y port-forwarding de los puertos 80 y 443 en el router hacia este equipo.
+radar-navarra.duckdns.org {
+    encode gzip
+    reverse_proxy 127.0.0.1:7800
+}

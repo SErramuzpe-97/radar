@@ -1,0 +1,844 @@
+openapi: 3.1.0
+info:
+  title: Radar API
+  description: API local de Radar (binario Rust en 127.0.0.1). La app web (Preact+TS) consume esta API a través del cliente generado desde este contrato OAS (api/openapi.yaml). Las búsquedas (scan/audit/watch) se ejecutan desde la web vía /api/jobs/*.
+  license:
+    name: MIT
+    identifier: MIT
+  version: 0.1.0
+paths:
+  /api/auth/logout:
+    post:
+      tags:
+      - auth
+      operationId: logout
+      responses:
+        '200':
+          description: Sesión cerrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MensajeOk'
+  /api/auth/me:
+    get:
+      tags:
+      - auth
+      operationId: me
+      responses:
+        '200':
+          description: Sesión actual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMe'
+        '401':
+          description: No autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/auth/request-code:
+    post:
+      tags:
+      - auth
+      operationId: request_code
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+        required: true
+      responses:
+        '200':
+          description: Si el email está autorizado se envía un código (no se revela la allowlist)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MensajeOk'
+        '429':
+          description: Demasiados intentos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/auth/verify:
+    post:
+      tags:
+      - auth
+      operationId: verify
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthVerify'
+        required: true
+      responses:
+        '200':
+          description: Sesión creada (cookie radar_session HttpOnly)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMe'
+        '401':
+          description: Código incorrecto o caducado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/export:
+    get:
+      tags:
+      - export
+      operationId: export
+      parameters:
+      - name: formato
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: prioridad
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: municipio
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: sector
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Export (csv / geojson / gpx) según `formato`
+          content:
+            text/csv:
+              schema:
+                type: string
+        '500':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/jobs:
+    get:
+      tags:
+      - jobs
+      operationId: list_jobs
+      responses:
+        '200':
+          description: Últimos jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+  /api/jobs/audit:
+    post:
+      tags:
+      - jobs
+      operationId: lanzar_audit
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuditParams'
+        required: true
+      responses:
+        '202':
+          description: Auditoría lanzada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '500':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/jobs/scan:
+    post:
+      tags:
+      - jobs
+      operationId: lanzar_scan
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanParams'
+        required: true
+      responses:
+        '202':
+          description: Scan lanzado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '500':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/jobs/watch:
+    post:
+      tags:
+      - jobs
+      operationId: lanzar_watch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WatchParams'
+        required: true
+      responses:
+        '202':
+          description: Watch lanzado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '500':
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/jobs/{id}:
+    get:
+      tags:
+      - jobs
+      operationId: get_job
+      parameters:
+      - name: id
+        in: path
+        description: ID del job
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Estado del job
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '404':
+          description: No existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/negocios:
+    get:
+      tags:
+      - negocios
+      operationId: list_negocios
+      parameters:
+      - name: municipio
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: sector
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: estado_web
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: prioridad
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: ordenar
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: dir
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: pagina
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: tam
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Página de negocios
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginaNegocios'
+        '500':
+          description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}:
+    get:
+      tags:
+      - negocios
+      operationId: get_negocio
+      parameters:
+      - name: id
+        in: path
+        description: ID del negocio
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Detalle del negocio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NegocioDetalle'
+        '404':
+          description: No existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}/eventos:
+    get:
+      tags:
+      - negocios
+      operationId: list_eventos
+      parameters:
+      - name: id
+        in: path
+        description: ID del negocio
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Eventos del negocio
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Evento'
+    post:
+      tags:
+      - negocios
+      operationId: add_evento
+      parameters:
+      - name: id
+        in: path
+        description: ID del negocio
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuevoEvento'
+        required: true
+      responses:
+        '201':
+          description: Evento registrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Evento'
+        '404':
+          description: No existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}/pipeline:
+    patch:
+      tags:
+      - negocios
+      operationId: set_pipeline
+      parameters:
+      - name: id
+        in: path
+        description: ID del negocio
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPipelineRequest'
+        required: true
+      responses:
+        '200':
+          description: Pipeline actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pipeline'
+        '404':
+          description: No existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/stats:
+    get:
+      tags:
+      - stats
+      operationId: stats
+      responses:
+        '200':
+          description: KPIs del panel
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stats'
+components:
+  schemas:
+    AuditParams:
+      type: object
+      properties:
+        limite:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        prioridad:
+          type:
+          - string
+          - 'null'
+    Auditoria:
+      type: object
+      required:
+      - id
+      - negocio_id
+      - fecha
+      - estado_web
+      - score
+      - prioridad
+      - senales
+      properties:
+        estado_web:
+          $ref: '#/components/schemas/EstadoWeb'
+        fecha:
+          type: string
+        id:
+          type: integer
+          format: int64
+        negocio_id:
+          type: integer
+          format: int64
+        prioridad:
+          type: string
+        score:
+          type: integer
+          format: int64
+        senales: {}
+    AuthMe:
+      type: object
+      required:
+      - email
+      - expira
+      properties:
+        email:
+          type: string
+        expira:
+          type: string
+    AuthRequest:
+      type: object
+      required:
+      - email
+      properties:
+        email:
+          type: string
+    AuthVerify:
+      type: object
+      required:
+      - email
+      - code
+      properties:
+        code:
+          type: string
+          description: Código de 6 dígitos enviado por email
+        email:
+          type: string
+    ErrorApi:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: string
+    EstadoJob:
+      type: string
+      enum:
+      - pendiente
+      - en_curso
+      - terminado
+      - error
+    EstadoPipeline:
+      type: string
+      enum:
+      - nuevo
+      - contactado
+      - visita_hecha
+      - interesado
+      - no_interesado
+      - propuesta
+      - cerrado
+    EstadoWeb:
+      type: string
+      enum:
+      - SIN_WEB
+      - SOLO_REDES
+      - WEB_ROTA
+      - WEB_APARCADA
+      - WEB_OBSOLETA
+      - WEB_MEJORABLE
+      - WEB_OK
+    Evento:
+      type: object
+      required:
+      - id
+      - negocio_id
+      - fecha
+      - tipo
+      properties:
+        fecha:
+          type: string
+        id:
+          type: integer
+          format: int64
+        negocio_id:
+          type: integer
+          format: int64
+        notas:
+          type:
+          - string
+          - 'null'
+        resultado:
+          type:
+          - string
+          - 'null'
+        tipo:
+          type: string
+    Job:
+      type: object
+      required:
+      - id
+      - tipo
+      - estado
+      - params
+      - hechos
+      - total
+      - creado
+      - actualizado
+      properties:
+        actualizado:
+          type: string
+        creado:
+          type: string
+        error:
+          type:
+          - string
+          - 'null'
+        estado:
+          $ref: '#/components/schemas/EstadoJob'
+        hechos:
+          type: integer
+          format: int64
+        id:
+          type: string
+        params: {}
+        tipo:
+          $ref: '#/components/schemas/TipoJob'
+        total:
+          type: integer
+          format: int64
+    MensajeOk:
+      type: object
+      required:
+      - message
+      properties:
+        message:
+          type: string
+    Negocio:
+      type: object
+      required:
+      - id
+      - nombre
+      - municipio
+      - fuente
+      - fuente_id
+      - primera_vista
+      properties:
+        categoria:
+          type:
+          - string
+          - 'null'
+        direccion:
+          type:
+          - string
+          - 'null'
+        email:
+          type:
+          - string
+          - 'null'
+        fuente:
+          type: string
+        fuente_id:
+          type: string
+        id:
+          type: integer
+          format: int64
+        lat:
+          type:
+          - number
+          - 'null'
+          format: double
+        lon:
+          type:
+          - number
+          - 'null'
+          format: double
+        municipio:
+          type: string
+        nombre:
+          type: string
+        primera_vista:
+          type: string
+        sector:
+          type:
+          - string
+          - 'null'
+        telefono:
+          type:
+          - string
+          - 'null'
+        ultima_verificacion:
+          type:
+          - string
+          - 'null'
+        web:
+          type:
+          - string
+          - 'null'
+    NegocioDetalle:
+      type: object
+      description: Respuesta plana de GET /api/negocios/{id} (negocio + últimas auditorías + pipeline + eventos).
+      required:
+      - negocio
+      - auditorias
+      - eventos
+      properties:
+        auditorias:
+          type: array
+          items:
+            $ref: '#/components/schemas/Auditoria'
+        eventos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Evento'
+        negocio:
+          $ref: '#/components/schemas/Negocio'
+        pipeline:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/Pipeline'
+    NuevoEvento:
+      type: object
+      required:
+      - tipo
+      properties:
+        notas:
+          type:
+          - string
+          - 'null'
+        resultado:
+          type:
+          - string
+          - 'null'
+        tipo:
+          type: string
+    PaginaNegocios:
+      type: object
+      description: GET /api/negocios → página de negocios (schema propio, sin genéricos, para el OAS).
+      required:
+      - items
+      - total
+      - pagina
+      - tam
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Negocio'
+        pagina:
+          type: integer
+          format: int64
+        tam:
+          type: integer
+          format: int64
+        total:
+          type: integer
+          format: int64
+    ParEtiqueta:
+      type: object
+      required:
+      - etiqueta
+      - total
+      properties:
+        etiqueta:
+          type: string
+        total:
+          type: integer
+          format: int64
+    Pipeline:
+      type: object
+      required:
+      - negocio_id
+      - estado
+      - fecha
+      properties:
+        canal:
+          type:
+          - string
+          - 'null'
+        estado:
+          $ref: '#/components/schemas/EstadoPipeline'
+        fecha:
+          type: string
+        negocio_id:
+          type: integer
+          format: int64
+        siguiente_accion:
+          type:
+          - string
+          - 'null'
+        valor_estimado:
+          type:
+          - number
+          - 'null'
+          format: double
+    ScanParams:
+      type: object
+      required:
+      - municipio
+      properties:
+        municipio:
+          type: string
+        sector:
+          type:
+          - string
+          - 'null'
+    SetPipelineRequest:
+      type: object
+      properties:
+        canal:
+          type:
+          - string
+          - 'null'
+        estado:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/EstadoPipeline'
+        siguiente_accion:
+          type:
+          - string
+          - 'null'
+        valor_estimado:
+          type:
+          - number
+          - 'null'
+          format: double
+    Stats:
+      type: object
+      required:
+      - total_negocios
+      - por_estado_web
+      - por_prioridad
+      - por_pipeline
+      - eventos_ultimos_7_dias
+      properties:
+        eventos_ultimos_7_dias:
+          type: integer
+          format: int64
+        por_estado_web:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParEtiqueta'
+        por_pipeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParEtiqueta'
+        por_prioridad:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParEtiqueta'
+        total_negocios:
+          type: integer
+          format: int64
+    TipoJob:
+      type: string
+      enum:
+      - scan
+      - audit
+      - watch
+      - export
+    WatchParams:
+      type: object
+      required:
+      - fuente
+      properties:
+        csv:
+          type:
+          - string
+          - 'null'
+        fuente:
+          type: string
+tags:
+- name: negocios
+  description: Negocios, pipeline CRM y eventos
+- name: jobs
+  description: Ejecución asíncrona de scan / audit / watch desde la web
+- name: export
+  description: Exportaciones CSV / GeoJSON / GPX
+- name: stats
+  description: KPIs del panel
+

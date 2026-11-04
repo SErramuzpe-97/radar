@@ -1,0 +1,66 @@
+:root {
+  color-scheme: dark;
+  --fondo: #14171c;
+  --panel: #1c2128;
+  --borde: #2c333d;
+  --texto: #e6e9ee;
+  --muted: #9aa4b2;
+  --acento: #4f8cff;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 14px/1.5 system-ui, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
+}
+.app { display: flex; flex-direction: column; height: 100vh; }
+.topbar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--borde);
+}
+.topbar nav { display: flex; gap: 8px; }
+.topbar button {
+  background: transparent; color: var(--muted); border: 1px solid var(--borde);
+  border-radius: 6px; padding: 4px 12px; cursor: pointer;
+}
+.topbar button.activo { color: var(--texto); border-color: var(--acento); }
+main { flex: 1; overflow: auto; padding: 16px; }
+.split { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.tabla table { width: 100%; border-collapse: collapse; }
+.tabla th, .tabla td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--borde); }
+.tabla tr:hover { background: var(--panel); cursor: pointer; }
+.tabla tr.seleccionada { background: #22304a; }
+.filtros { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.filtros input, .filtros select, .acciones input, .acciones select {
+  background: var(--panel); color: var(--texto);
+  border: 1px solid var(--borde); border-radius: 6px; padding: 6px 8px;
+}
+.ficha { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 16px; }
+.ficha h2 { margin-top: 0; }
+.muted { color: var(--muted); }
+.error { color: #ff7b72; }
+button {
+  background: var(--acento); color: white; border: 0; border-radius: 6px;
+  padding: 6px 14px; cursor: pointer;
+}
+button.secundario { background: transparent; border: 1px solid var(--borde); color: var(--muted); }
+.acciones { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+.paginacion { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.paginacion button { padding: 4px 10px; }
+.prio-a { color: #ff7b72; font-weight: 700; }
+.prio-b { color: #e3b341; font-weight: 700; }
+.prio-c { color: var(--muted); }
+.login {
+  max-width: 360px; margin: 10vh auto; background: var(--panel);
+  border: 1px solid var(--borde); border-radius: 10px; padding: 24px;
+}
+.login form { display: flex; flex-direction: column; gap: 12px; }
+.login label { display: flex; flex-direction: column; gap: 6px; }
+.login input {
+  background: var(--fondo); color: var(--texto);
+  border: 1px solid var(--borde); border-radius: 6px; padding: 8px;
+}
+.mapa { height: calc(100vh - 120px); border-radius: 8px; }
+.jobs table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+.jobs th, .jobs td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--borde); }
