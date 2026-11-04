@@ -16,7 +16,6 @@ Generado con `scripts/tasks.sh board`. No editar a mano.
 
 | ID | Título | Asignado | Fase | Deps |
 |---|---|---|---|---|
-| T-004 | Fuente Overpass: scan por municipio y sector con upsert | vibe | F1 | T-003 |
 | T-017 | watch BORME/OpenMercantil: leads de apertura (score 90, prioridad A) | vibe | F3 |  |
 
 ## blocked
@@ -31,6 +30,7 @@ Generado con `scripts/tasks.sh board`. No editar a mano.
 | T-001 | Contrato OAS único generado desde Rust (utoipa) -> api/openapi.yaml | vibe | F1 |  |
 | T-002 | Generación determinista del cliente TS en Preact (openapi-typescript) + check de drift | vibe | F1 | T-001 |
 | T-003 | Store SQLite + esquema (negocios, auditorias, pipeline, eventos, jobs, auth_codes, sesiones, meta) | vibe | F1 |  |
+| T-004 | Fuente Overpass: scan por municipio y sector con upsert | agent:codex | F1 | T-003 |
 | T-005 | Auditor web HTTP (1 GET por web, timeout 8s, UA identificable, señales §6.2) | vibe | F1 | T-003 |
 | T-006 | Clasificación §6.1 + scoring §7 + prioridad A/B/C | vibe | F1 | T-005 |
 | T-007 | CLI: scan / audit / export (csv|gpx|geojson) / watch / serve / api-spec | vibe | F1 | T-005 T-006 |

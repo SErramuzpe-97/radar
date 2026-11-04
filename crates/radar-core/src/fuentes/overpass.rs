@@ -2,14 +2,14 @@
 
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use serde::Deserialize;
 
 use crate::model::Negocio;
 use crate::store::{self, Store};
 
-const OVERPASS_URL: &str = "https://overpass-api.de/api/interpreter";
-const UA: &str = "RadarNavarra/0.1 (+prospeccion local B2B; contacto: radar@localhost)";
+const DEFAULT_OVERPASS_URL: &str = "https://ovp.dresel.systems/api/interpreter";
+const UA: &str = "RadarNavarra/0.1 (+https://radar-navarra.duckdns.org; contact: hello@carlotacarrillo.eu)";
 
 /// Pares (clave OSM, regex de valores). Vacío = cualquier POI con nombre.
 fn filtros_sector(sector: Option<&str>) -> Vec<(&'static str, &'static str)> {
@@ -205,26 +205,30 @@ fn a_negocio(el: &Element, tags: &Tags, municipio: &str) -> Option<Negocio> {
 /// Ejecuta el scan de un municipio (y sector opcional) contra Overpass e inserta en SQLite.
 /// Devuelve el número de negocios procesados.
 pub async fn scan_municipio(store: &Store, municipio: &str, sector: Option<&str>) -> Result<usize> {
+    if municipio.trim().is_empty() {
+        bail!("el municipio no puede estar vacío");
+    }
+    if let Some(sector) = sector {
+        let sector = sector.to_ascii_lowercase();
+        if !["hosteleria", "comercio", "servicios", "profesionales", "industria", "todos"]
+            .contains(&sector.as_str())
+        {
+            bail!("sector desconocido: {sector}; usa hosteleria, comercio, servicios, profesionales, industria o todos");
+        }
+    }
+
+    // El endpoint principal devuelve HTTP 406 desde algunas redes. La instancia europea
+    // publica un extracto diario y es suficiente para el ámbito de Radar (Navarra).
+    let endpoint = std::env::var("RADAR_OVERPASS_URL")
+        .unwrap_or_else(|_| DEFAULT_OVERPASS_URL.to_string());
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(180))
         .user_agent(UA)
         .build()?;
 
-    let resp = client
-        .post(OVERPASS_URL)
-        .form(&[("data", query(municipio, sector, false))])
-        .send()
-        .await
-        .context("Overpass (consulta exacta)")?;
-    let mut data: OverpassResponse = resp.json().await.context("parseando respuesta Overpass")?;
+    let mut data = consultar(&client, &endpoint, query(municipio, sector, false), "exacta").await?;
     if data.elements.is_empty() {
-        let resp = client
-            .post(OVERPASS_URL)
-            .form(&[("data", query(municipio, sector, true))])
-            .send()
-            .await
-            .context("Overpass (consulta fuzzy)")?;
-        data = resp.json().await.context("parseando respuesta Overpass (fuzzy)")?;
+        data = consultar(&client, &endpoint, query(municipio, sector, true), "ampliada").await?;
     }
 
     let mut count = 0;
@@ -238,4 +242,25 @@ pub async fn scan_municipio(store: &Store, municipio: &str, sector: Option<&str>
         }
     }
     Ok(count)
+}
+
+async fn consultar(
+    client: &reqwest::Client,
+    endpoint: &str,
+    consulta: String,
+    tipo: &str,
+) -> Result<OverpassResponse> {
+    let response = client
+        .post(endpoint)
+        .form(&[("data", consulta)])
+        .send()
+        .await
+        .with_context(|| format!("conectando con Overpass (consulta {tipo}) en {endpoint}"))?;
+    let status = response.status();
+    if !status.is_success() {
+        let detalle = response.text().await.unwrap_or_default();
+        let detalle = detalle.chars().take(400).collect::<String>();
+        bail!("Overpass respondió HTTP {status} (consulta {tipo}): {detalle}");
+    }
+    response.json().await.with_context(|| format!("parseando respuesta Overpass (consulta {tipo})"))
 }
