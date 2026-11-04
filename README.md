@@ -43,6 +43,8 @@ cargo run -p radar-cli -- serve --puerto 7800
 cargo run -p radar-cli -- scan --municipio Pamplona --sector hosteleria
 cargo run -p radar-cli -- audit --prioridad A
 cargo run -p radar-cli -- export --formato csv --prioridad A
+cargo run -p radar-cli -- watch --fuente borme                 # BORME oficial, últimos 7 días
+cargo run -p radar-cli -- watch --fuente borme --fecha 2026-10-09 # día concreto/backfill
 ```
 
 ## API contract-first (ADR-001)

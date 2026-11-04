@@ -29,7 +29,7 @@ que `api/openapi.yaml` no tenga drift con lo que genera el binario.
 | GET/POST | `/api/negocios/{id}/eventos` | Lista / registra eventos (visita, llamada…) |
 | POST | `/api/jobs/scan` | **Lanza búsqueda** (Overpass) desde la web → 202 |
 | POST | `/api/jobs/audit` | Lanza auditoría web masiva → 202 |
-| POST | `/api/jobs/watch` | Vigilancia de altas BORME/OpenMercantil → 202 |
+| POST | `/api/jobs/watch` | Vigila constituciones de Navarra en BORME/BOE (últimos 7 días; CSV opcional) → 202 |
 | GET | `/api/jobs`, `/api/jobs/{id}` | Estado y progreso de los jobs |
 | GET | `/api/export?formato=csv|geojson|gpx` | Export para rutas de visita |
 | GET | `/api/stats` | KPIs del panel |

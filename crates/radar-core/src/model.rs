@@ -236,7 +236,9 @@ pub struct AuditParams {
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct WatchParams {
+    /// Fuente a vigilar. `borme` consulta el sumario diario oficial del BOE; `openmercantil` es alias compatible.
     pub fuente: String,
+    /// CSV manual opcional. Si se omite, descarga las publicaciones recientes del BORME.
     #[serde(default)]
     pub csv: Option<String>,
 }

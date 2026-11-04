@@ -16,7 +16,6 @@ Generado con `scripts/tasks.sh board`. No editar a mano.
 
 | ID | Título | Asignado | Fase | Deps |
 |---|---|---|---|---|
-| T-017 | watch BORME/OpenMercantil: leads de apertura (score 90, prioridad A) | vibe | F3 |  |
 
 ## blocked
 
@@ -43,6 +42,7 @@ Generado con `scripts/tasks.sh board`. No editar a mano.
 | T-014 | UI mapa Leaflet con teselas libres OSM (atribución ODbL) y pines por negocio | vibe | F3 | T-011 |
 | T-015 | Export GPX + vista "ruta del día" en la UI (selección manual -> GPX/enlace Maps) | agent:codex | F3 | T-014 T-008 |
 | T-016 | Panel KPIs: embudo del pipeline, distribución por estado web/prioridad, eventos de la semana | agent:codex | F3 | T-008 T-011 |
+| T-017 | watch BORME/OpenMercantil: leads de apertura (score 90, prioridad A) | agent:codex | F3 |  |
 | T-018 | Embebido de la UI en el binario (rust-embed) para un único ejecutable | agent:codex | F2 | T-008 T-010 |
 | T-019 | Tests de contrato y API: spec servida == api/openapi.yaml, flujos auth, CRUD | agent:codex | F1 | T-002 T-008 |
 | T-020 | Sistema de tareas multi-agente (tasks/, scripts/tasks.sh, board.md, validate) | vibe | F0 |  |

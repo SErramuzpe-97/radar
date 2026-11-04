@@ -89,7 +89,7 @@ Cada negocio pasa por: descubrir → enriquecer → auditar → puntuar → visi
 ### 5.1 Vigilancia de negocios nuevos (el lead más caliente)
 
 **Sociedades — sí, gratis y por nombre (BORME).** El Registro Mercantil publica de lunes a viernes, gratis y sin registro, las constituciones de sociedades por provincia: nombre, CIF, domicilio registral, capital, objeto social y administradores ([Boletín Claro](https://boletinclaro.es/blog/que-es-borme-registro-mercantil)). Ejemplos reales recientes en Navarra: *NPR Soluciones SL* (17/08/2026), *Mimo Bienestar SL* (23/04/2026), *Gestión Turística de Navarra SL* (30/01/2026) — negocios de servicios reales, no holdings ([OpenMercantil](https://openmercantil.es/empresas/navarra)).
-- **Vía de integración preferida:** OpenMercantil, que parsea el BORME a diario y ofrece fichas, constituciones recientes por provincia y dataset/API con licencia CC BY 4.0 (además de servidor MCP). Alternativa: descarga diaria del BORME Navarra en boe.es/diario_borme (el RSS del BOE no filtra por provincia).
+- **Integración actual:** API oficial de datos abiertos del BOE: consulta el sumario diario, descarga el XML de Navarra y extrae los artículos marcados como constitución. Los registros guardan el identificador y la URL del documento fuente; la ficha muestra la atribución requerida por las [condiciones de reutilización del BOE](https://www.boe.es/informacion/aviso_legal/index.php). OpenMercantil ofrece una API y datasets CC BY 4.0 como alternativa; sus datos derivados deben atribuir también a OpenMercantil.
 - **Filtro necesario:** descartar por objeto social/CNAE las sociedades patrimoniales y holding sin actividad comercial visible.
 
 **Autónomos — no existe lista pública por nombre.** Las altas del RETA (Seguridad Social) no se publican con nombres; solo hay estadísticas agregadas ([Legalcor](https://legalcor.es/como-saber-si-alguien-esta-dado-de-alta-como-autonomo/)). Detección indirecta:
@@ -100,7 +100,7 @@ Cada negocio pasa por: descubrir → enriquecer → auditar → puntuar → visi
 
 **Canal preventivo (llegar antes de que abran):** la Cámara de Comercio de Navarra, vía España Emprende, asesoró a 283 emprendedores en un año y apoyó la creación de 64 empresas ([Cámara Navarra](https://camaranavarra.com/2024/02/16/la-camara-de-comercio-de-navarra-apoya-en-la-creacion-de-64-empresas-en-2023/)) — muchos aún con el negocio sin abrir. Un taller de "presencia digital desde el día uno" para sus emprendedores da acceso a leads que nadie más tiene.
 
-**En el pipeline:** `radar watch --fuente borme|openmercantil` marca constituciones nuevas como *leads de apertura* (score alto fijo, p. ej. 90) y las añade a la lista de visitas; el resto del pipeline (auditar, puntuar, visitar) no cambia.
+**En el pipeline:** `radar watch --fuente borme` consulta los sumarios BOE de los últimos siete días; `--fecha YYYY-MM-DD` permite importar una publicación concreta y `--csv` conserva la importación manual. Solo se convierten artículos de constitución de Navarra en *leads de apertura* (score 90, prioridad A). Se guardan identificador y URL oficial para atribución; repetir la descarga no crea leads ni auditorías duplicadas.
 
 ---
 

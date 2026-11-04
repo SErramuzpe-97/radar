@@ -392,7 +392,9 @@ export interface components {
         /** @enum {string} */
         TipoJob: "scan" | "audit" | "watch" | "export";
         WatchParams: {
+            /** @description CSV manual opcional. Si se omite, descarga las publicaciones recientes del BORME. */
             csv?: string | null;
+            /** @description Fuente a vigilar. `borme` consulta el sumario diario oficial del BOE; `openmercantil` es alias compatible. */
             fuente: string;
         };
     };

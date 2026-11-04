@@ -45,13 +45,16 @@ enum Cmd {
         #[arg(long)]
         salida: Option<String>,
     },
-    /// Vigilancia de altas nuevas (BORME/OpenMercantil). V1: --csv con columnas
-    /// nombre,municipio,domicilio,objeto,cnae,fecha
+    /// Vigilancia de nuevas constituciones del BORME (últimos 7 días) o importación CSV
+    /// con columnas nombre,municipio,domicilio,objeto,cnae,fecha
     Watch {
         #[arg(long, default_value = "borme")]
         fuente: String,
         #[arg(long)]
         csv: Option<String>,
+        /// Fecha concreta (YYYY-MM-DD) para importar un día de BORME; si se omite, revisa 7 días.
+        #[arg(long)]
+        fecha: Option<String>,
     },
     /// Sirve la API REST + dashboard en 127.0.0.1 (puerto por defecto 7800)
     Serve {
@@ -127,12 +130,16 @@ async fn main() -> Result<()> {
             }
             eprintln!("export OK ({formato}, prioridad: {})", prioridad.as_deref().unwrap_or("todas"));
         }
-        Cmd::Watch { fuente, csv } => {
+        Cmd::Watch { fuente, csv, fecha } => {
             let store = store::abrir(&cli.db)?;
             match fuente.as_str() {
                 "borme" | "openmercantil" => {
-                    let path = csv.ok_or_else(|| anyhow::anyhow!("watch: falta --csv altas.csv"))?;
-                    let n = radar_core::fuentes::borme::watch_desde_csv(&store, &path)?;
+                    let n = match (csv, fecha) {
+                        (Some(path), None) => radar_core::fuentes::borme::watch_desde_csv(&store, &path)?,
+                        (None, Some(fecha)) => radar_core::fuentes::borme::watch_borme_fecha(&store, &fecha).await?,
+                        (None, None) => radar_core::fuentes::borme::watch_borme_reciente(&store).await?,
+                        (Some(_), Some(_)) => anyhow::bail!("watch: usa --csv o --fecha, no ambos"),
+                    };
                     println!("watch OK: {n} leads de apertura añadidos ({fuente})");
                 }
                 f => anyhow::bail!("fuente desconocida: {f}"),

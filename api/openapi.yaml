@@ -830,8 +830,10 @@ components:
           type:
           - string
           - 'null'
+          description: CSV manual opcional. Si se omite, descarga las publicaciones recientes del BORME.
         fuente:
           type: string
+          description: Fuente a vigilar. `borme` consulta el sumario diario oficial del BOE; `openmercantil` es alias compatible.
 tags:
 - name: negocios
   description: Negocios, pipeline CRM y eventos

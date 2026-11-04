@@ -372,9 +372,14 @@ async fn lanzar_watch(State(st): State<AppState>, Json(params): Json<WatchParams
                 return;
             }
         };
-        let r = match &params.csv {
-            Some(path) => radar_core::fuentes::borme::watch_desde_csv(&store2, path),
-            None => Err(anyhow::anyhow!("watch: falta --csv (fuente {} aún no implementada)", params.fuente)),
+        let r = match (&params.fuente[..], &params.csv) {
+            ("borme" | "openmercantil", Some(path)) => {
+                radar_core::fuentes::borme::watch_desde_csv(&store2, path)
+            }
+            ("borme" | "openmercantil", None) => {
+                radar_core::fuentes::borme::watch_borme_reciente(&store2).await
+            }
+            (fuente, _) => Err(anyhow::anyhow!("watch: fuente desconocida {fuente}")),
         };
         match r {
             Ok(n) => {

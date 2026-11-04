@@ -15,6 +15,8 @@ export function FichaNegocio() {
   const n = d.negocio;
   const ultima = d.auditorias[0];
   const pipeline = d.pipeline;
+  const senales = ultima?.senales as Record<string, unknown> | undefined;
+  const referenciaBorme = typeof senales?.fuente_url === "string" ? senales.fuente_url : "https://www.boe.es";
 
   return (
     <aside class="ficha">
@@ -26,6 +28,11 @@ export function FichaNegocio() {
       {n.telefono && <p>📞 {n.telefono}</p>}
       {n.email && <p>✉️ {n.email}</p>}
       {n.web && <p>🌐 <a href={n.web} target="_blank" rel="noreferrer">{n.web}</a></p>}
+      {n.fuente === "borme" && (
+        <p class="muted">
+          Basado en datos de la <a href={referenciaBorme} target="_blank" rel="noreferrer">Agencia Estatal BOE</a>.
+        </p>
+      )}
 
       {ultima && (
         <div class="auditoria">
