@@ -6,8 +6,6 @@ Generado con `scripts/tasks.sh board`. No editar a mano.
 
 | ID | Título | Asignado | Fase | Deps |
 |---|---|---|---|---|
-| T-025 | Endurecimiento de la exposición: bind 127.0.0.1, cookie Secure tras proxy, headers de seguridad, CORS mismo origen | unassigned | F2 | T-022 T-024 |
-| T-026 | Documentación de despliegue duckdns: cuenta, dominio, token, router, Caddyfile, SMTP, checklist | unassigned | F2 | T-024 |
 
 ## ready
 
@@ -25,7 +23,6 @@ Generado con `scripts/tasks.sh board`. No editar a mano.
 
 | ID | Título | Asignado | Fase | Deps |
 |---|---|---|---|---|
-| T-024 | Exposición duckdns radar-navarra.duckdns.org: script de IP dinámica + cron + Caddy con Let's Encrypt (port-forward 80/443) | unassigned | F2 | T-022 |
 
 ## done
 
@@ -52,5 +49,8 @@ Generado con `scripts/tasks.sh board`. No editar a mano.
 | T-021 | ADRs + actualización del documento de diseño con los detalles nuevos (OAS, jobs desde web, Signals, duckdns+OTP, tareas) | vibe | F0 | T-001 |
 | T-022 | Auth OTP por email: allowlist (4 emails), códigos hasheados en SQLite, expiración 10 min, rate limit, SMTP vía env, sesión JWT en cookie HttpOnly + middleware | vibe | F2 | T-001 T-003 |
 | T-023 | UI login email -> código de 6 dígitos (Signals) + guard de rutas | vibe | F2 | T-022 T-010 |
+| T-024 | Exposición duckdns radar-navarra.duckdns.org: script de IP dinámica + cron + Caddy con Let's Encrypt (port-forward 80/443) | agent:codex | F2 | T-022 |
+| T-025 | Endurecimiento de la exposición: bind 127.0.0.1, cookie Secure tras proxy, headers de seguridad, CORS mismo origen | agent:codex | F2 | T-022 T-024 |
+| T-026 | Documentación de despliegue duckdns: cuenta, dominio, token, router, Caddyfile, SMTP, checklist | unassigned | F2 | T-024 |
 | T-027 | CI local: scripts/ci-local.sh (tasks validate + cargo check + drift OAS + gen:api + npm build) | agent:codex | F0 | T-002 T-019 T-020 |
 

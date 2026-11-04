@@ -533,7 +533,22 @@ pub fn router(st: AppState) -> Router {
         .route("/api/stats", get(stats))
         .route_layer(middleware::from_fn_with_state(st.clone(), crate::auth::require_auth));
 
-    Router::new().merge(public).merge(protected).with_state(st)
+    Router::new()
+        .merge(public)
+        .merge(protected)
+        .with_state(st)
+        .fallback(get(serve_ui))
+        .layer(middleware::from_fn(security_headers))
+}
+
+async fn security_headers(req: axum::extract::Request, next: middleware::Next) -> Response {
+    let mut response = next.run(req).await;
+    let headers = response.headers_mut();
+    headers.insert("x-content-type-options", "nosniff".parse().unwrap());
+    headers.insert("x-frame-options", "DENY".parse().unwrap());
+    headers.insert("referrer-policy", "strict-origin-when-cross-origin".parse().unwrap());
+    // No se habilita CORS: los navegadores solo podrán leer la API desde el mismo origen.
+    response
 }
 
 #[derive(RustEmbed)]
@@ -568,7 +583,7 @@ async fn serve_ui(uri: Uri) -> Response {
 pub async fn serve(db_path: &str, puerto: u16) -> anyhow::Result<()> {
     let store = store::abrir(db_path)?;
     let st = AppState { store, db_path: db_path.to_string() };
-    let app = router(st).fallback(get(serve_ui));
+    let app = router(st);
     let addr = SocketAddr::from(([127, 0, 0, 1], puerto));
     let listener = tokio::net::TcpListener::bind(addr).await?;
     println!("Radar sirviendo en http://{addr} (API: /api/*, contrato: /openapi.json)");
@@ -603,6 +618,10 @@ mod tests {
             .oneshot(peticion("GET", "/openapi.json", None))
             .await.unwrap();
         assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(response.headers().get("x-content-type-options").unwrap(), "nosniff");
+        assert_eq!(response.headers().get("x-frame-options").unwrap(), "DENY");
+        assert_eq!(response.headers().get("referrer-policy").unwrap(), "strict-origin-when-cross-origin");
+        assert!(response.headers().get(header::ACCESS_CONTROL_ALLOW_ORIGIN).is_none());
         let servido: serde_json::Value = serde_json::from_slice(
             &to_bytes(response.into_body(), usize::MAX).await.unwrap(),
         ).unwrap();
