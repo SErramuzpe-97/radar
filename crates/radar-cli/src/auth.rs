@@ -268,10 +268,13 @@ pub async fn me(Extension(user): Extension<AuthUser>) -> Json<AuthMe> {
 pub async fn logout(State(st): State<AppState>, req: Request) -> Result<Response, ApiError> {
     if let Some(token) = extraer_token(&req) {
         if let Some(user) = validar_token(&st, &token) {
+            // Leer el secreto antes de tomar el lock de SQLite: jwt_secret también consulta
+            // meta y volver a llamarlo dentro del lock produciría un deadlock.
+            let secret = jwt_secret(&st);
             let conn = st.store.lock().unwrap();
             if let Ok(datos) = jsonwebtoken::decode::<Claims>(
                 &token,
-                &DecodingKey::from_secret(jwt_secret(&st).as_bytes()),
+                &DecodingKey::from_secret(secret.as_bytes()),
                 &Validation::default(),
             ) {
                 let _ = store::borrar_sesion(&conn, &datos.claims.jti);

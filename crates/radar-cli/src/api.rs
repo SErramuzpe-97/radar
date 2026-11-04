@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 
 use axum::{
     extract::{Path, Query, State},
-    http::{header, StatusCode},
+    http::{header, StatusCode, Uri},
     middleware,
     response::{IntoResponse, Json, Response},
     routing::{get, patch, post},
@@ -15,7 +15,7 @@ use axum::{
 use radar_core::model::*;
 use radar_core::store::{self, Store};
 use serde::Deserialize;
-use tower_http::services::{ServeDir, ServeFile};
+use rust_embed::RustEmbed;
 use utoipa::{IntoParams, OpenApi};
 
 #[derive(Clone)]
@@ -536,17 +536,173 @@ pub fn router(st: AppState) -> Router {
     Router::new().merge(public).merge(protected).with_state(st)
 }
 
-/// Sirve la API en 127.0.0.1:{puerto} y, si existe radar-ui/dist, el dashboard embebido.
+#[derive(RustEmbed)]
+#[folder = "../../radar-ui/dist/"]
+struct UiAssets;
+
+async fn serve_ui(uri: Uri) -> Response {
+    let requested = uri.path().trim_start_matches('/');
+    let path = if requested.is_empty() { "index.html" } else { requested };
+    // Los paths sin archivo sirven la entrada de Preact para permitir navegación SPA.
+    let (asset, content_path) = match UiAssets::get(path) {
+        Some(asset) => (Some(asset), path),
+        None => (UiAssets::get("index.html"), "index.html"),
+    };
+    match asset {
+        Some(asset) => {
+            let content_type = mime_guess::from_path(content_path).first_or_octet_stream();
+            Response::builder()
+                .status(StatusCode::OK)
+                .header(header::CONTENT_TYPE, content_type.as_ref())
+                .body(axum::body::Body::from(asset.data.into_owned()))
+                .unwrap()
+        }
+        None => Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(axum::body::Body::from("UI no incluida en este binario"))
+            .unwrap(),
+    }
+}
+
+/// Sirve la API en 127.0.0.1:{puerto} y los archivos del dashboard incluidos en el binario.
 pub async fn serve(db_path: &str, puerto: u16) -> anyhow::Result<()> {
     let store = store::abrir(db_path)?;
     let st = AppState { store, db_path: db_path.to_string() };
-    let app = router(st).fallback_service(
-        ServeDir::new("radar-ui/dist").not_found_service(ServeFile::new("radar-ui/dist/index.html")),
-    );
+    let app = router(st).fallback(get(serve_ui));
     let addr = SocketAddr::from(([127, 0, 0, 1], puerto));
     let listener = tokio::net::TcpListener::bind(addr).await?;
     println!("Radar sirviendo en http://{addr} (API: /api/*, contrato: /openapi.json)");
     println!("Auth: OTP por email para {:?}", crate::auth::emails_autorizados());
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{body::{to_bytes, Body}, http::Request};
+    use radar_core::model::{EstadoPipeline, Negocio};
+    use sha2::{Digest, Sha256};
+    use tower::ServiceExt;
+
+    fn estado_prueba() -> AppState {
+        AppState { store: store::abrir(":memory:").unwrap(), db_path: ":memory:".into() }
+    }
+
+    fn peticion(metodo: &str, ruta: &str, cuerpo: Option<&str>) -> Request<Body> {
+        let mut builder = Request::builder().method(metodo).uri(ruta);
+        if cuerpo.is_some() {
+            builder = builder.header(header::CONTENT_TYPE, "application/json");
+        }
+        builder.body(cuerpo.map(|s| Body::from(s.to_owned())).unwrap_or_else(Body::empty)).unwrap()
+    }
+
+    #[tokio::test]
+    async fn contrato_servido_coincide_con_el_openapi_commiteado() {
+        let response = router(estado_prueba())
+            .oneshot(peticion("GET", "/openapi.json", None))
+            .await.unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let servido: serde_json::Value = serde_json::from_slice(
+            &to_bytes(response.into_body(), usize::MAX).await.unwrap(),
+        ).unwrap();
+        let yaml: serde_json::Value = serde_yaml::from_str(include_str!("../../../api/openapi.yaml")).unwrap();
+        assert_eq!(servido, yaml);
+    }
+
+    #[tokio::test]
+    async fn otp_autentica_y_api_permite_consultar_actualizar_y_registrar_eventos() {
+        let st = estado_prueba();
+        let negocio_id = {
+            let conn = st.store.lock().unwrap();
+            store::upsert_negocio(&conn, &Negocio {
+                id: 0,
+                nombre: "Negocio de prueba".into(),
+                categoria: Some("restaurant".into()),
+                sector: Some("hosteleria".into()),
+                direccion: Some("Calle Mayor 1".into()),
+                municipio: "Pamplona".into(),
+                lat: Some(42.8),
+                lon: Some(-1.6),
+                telefono: None,
+                email: None,
+                web: None,
+                fuente: "test".into(),
+                fuente_id: "negocio-1".into(),
+                primera_vista: store::ahora(),
+                ultima_verificacion: None,
+            }).unwrap()
+        };
+        let app = router(st.clone());
+
+        let sin_sesion = app.clone()
+            .oneshot(peticion("GET", "/api/negocios", None)).await.unwrap();
+        assert_eq!(sin_sesion.status(), StatusCode::UNAUTHORIZED);
+
+        let desconocido = app.clone().oneshot(peticion(
+            "POST", "/api/auth/request-code", Some(r#"{"email":"fuera@example.com"}"#),
+        )).await.unwrap();
+        assert_eq!(desconocido.status(), StatusCode::OK);
+        let respuesta = to_bytes(desconocido.into_body(), usize::MAX).await.unwrap();
+        assert_eq!(serde_json::from_slice::<MensajeOk>(&respuesta).unwrap().message,
+            "Si el email está autorizado, recibirás un código de acceso.");
+
+        let email = crate::auth::emails_autorizados().into_iter().next().expect("allowlist de test");
+        let mut hasher = Sha256::new();
+        hasher.update(b"123456");
+        let hash = hex::encode(hasher.finalize());
+        store::crear_auth_code(&st.store.lock().unwrap(), &email, &hash, 600).unwrap();
+        let mut verify = peticion("POST", "/api/auth/verify", Some(&format!(
+            "{{\"email\":\"{email}\",\"code\":\"123456\"}}"
+        )));
+        verify.headers_mut().insert("x-forwarded-proto", "https".parse().unwrap());
+        let verificada = app.clone().oneshot(verify).await.unwrap();
+        assert_eq!(verificada.status(), StatusCode::OK);
+        let set_cookie = verificada.headers().get(header::SET_COOKIE).unwrap().to_str().unwrap().to_owned();
+        assert!(set_cookie.contains("HttpOnly"));
+        assert!(set_cookie.contains("Secure"));
+        let cookie = set_cookie.split(';').next().unwrap().to_owned();
+
+        let mut me = peticion("GET", "/api/auth/me", None);
+        me.headers_mut().insert(header::COOKIE, cookie.parse().unwrap());
+        assert_eq!(app.clone().oneshot(me).await.unwrap().status(), StatusCode::OK);
+
+        let mut listar = peticion("GET", "/api/negocios", None);
+        listar.headers_mut().insert(header::COOKIE, cookie.parse().unwrap());
+        let listado = app.clone().oneshot(listar).await.unwrap();
+        assert_eq!(listado.status(), StatusCode::OK);
+        let body = to_bytes(listado.into_body(), usize::MAX).await.unwrap();
+        let pagina: PaginaNegocios = serde_json::from_slice(&body).unwrap();
+        assert_eq!(pagina.total, 1);
+        assert_eq!(pagina.items[0].nombre, "Negocio de prueba");
+
+        let mut pipeline = peticion("PATCH", &format!("/api/negocios/{negocio_id}/pipeline"),
+            Some(r#"{"estado":"contactado","valor_estimado":500.0,"canal":"email"}"#));
+        pipeline.headers_mut().insert(header::COOKIE, cookie.parse().unwrap());
+        assert_eq!(app.clone().oneshot(pipeline).await.unwrap().status(), StatusCode::OK);
+        let detalle = store::detalle_negocio(&st.store.lock().unwrap(), negocio_id).unwrap().unwrap();
+        assert_eq!(detalle.pipeline.unwrap().estado, EstadoPipeline::Contactado);
+
+        let mut evento = peticion("POST", &format!("/api/negocios/{negocio_id}/eventos"),
+            Some(r#"{"tipo":"email","resultado":"enviado","notas":"primer contacto"}"#));
+        evento.headers_mut().insert(header::COOKIE, cookie.parse().unwrap());
+        assert_eq!(app.clone().oneshot(evento).await.unwrap().status(), StatusCode::CREATED);
+        let mut listar_eventos = peticion("GET", &format!("/api/negocios/{negocio_id}/eventos"), None);
+        listar_eventos.headers_mut().insert(header::COOKIE, cookie.parse().unwrap());
+        let respuesta_eventos = app.clone().oneshot(listar_eventos).await.unwrap();
+        assert_eq!(respuesta_eventos.status(), StatusCode::OK);
+        let body_eventos = to_bytes(respuesta_eventos.into_body(), usize::MAX).await.unwrap();
+        let eventos: Vec<Evento> = serde_json::from_slice(&body_eventos).unwrap();
+        assert_eq!(eventos.len(), 1);
+        assert_eq!(eventos[0].tipo, "email");
+
+        let mut logout = peticion("POST", "/api/auth/logout", None);
+        logout.headers_mut().insert(header::COOKIE, cookie.parse().unwrap());
+        let respuesta_logout = app.clone().oneshot(logout).await.unwrap();
+        assert_eq!(respuesta_logout.status(), StatusCode::OK);
+        assert!(respuesta_logout.headers().get(header::SET_COOKIE).unwrap().to_str().unwrap().contains("Max-Age=0"));
+        let mut despues = peticion("GET", "/api/stats", None);
+        despues.headers_mut().insert(header::COOKIE, cookie.parse().unwrap());
+        assert_eq!(app.oneshot(despues).await.unwrap().status(), StatusCode::UNAUTHORIZED);
+    }
 }

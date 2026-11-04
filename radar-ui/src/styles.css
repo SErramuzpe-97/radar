@@ -64,3 +64,36 @@ button.secundario { background: transparent; border: 1px solid var(--borde); col
 .mapa { height: calc(100vh - 120px); border-radius: 8px; }
 .jobs table { width: 100%; border-collapse: collapse; margin-top: 16px; }
 .jobs th, .jobs td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--borde); }
+.ruta-dia { max-width: 1000px; margin: 0 auto; }
+.ruta-cabecera { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.ruta-cabecera h1 { margin: 0; font-size: 1.4rem; }
+.ruta-lista { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; overflow: hidden; }
+.ruta-parada { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 8px 12px; border-bottom: 1px solid var(--borde); cursor: pointer; }
+.ruta-parada:last-child { border-bottom: 0; }
+.ruta-parada:hover { background: #232a33; }
+.ruta-parada input { accent-color: var(--acento); }
+.ruta-parada.sin-coordenadas { opacity: .55; cursor: not-allowed; }
+.ruta-numero { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--acento); color: white; font-size: 12px; font-weight: 700; }
+.ruta-nombre { flex: 1; }
+.ruta-nombre small { display: block; color: var(--muted); }
+.ruta-acciones { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+a.boton { display: inline-block; padding: 6px 14px; border-radius: 6px; background: var(--acento); color: white; text-decoration: none; }
+.panel-kpis { max-width: 1200px; margin: 0 auto; }
+.kpi-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.kpi-cabecera h1 { margin: 0; font-size: 1.4rem; }
+.kpi-resumen { display: grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); gap: 12px; margin: 20px 0; }
+.kpi-total, .kpi-panel { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 16px; }
+.kpi-total strong { display: block; margin-top: 4px; font-size: 2rem; }
+.kpi-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.kpi-panel h2 { margin: 0 0 14px; font-size: 1rem; }
+.kpi-barras { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.kpi-etiqueta { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 5px; }
+.kpi-pista { height: 7px; overflow: hidden; border-radius: 5px; background: var(--fondo); }
+.kpi-pista span { display: block; height: 100%; border-radius: inherit; background: var(--acento); }
+@media (max-width: 800px) { .kpi-grid { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .kpi-resumen { grid-template-columns: 1fr; } }
+@media (max-width: 700px) {
+  .ruta-cabecera { align-items: flex-start; flex-direction: column; }
+  .topbar { align-items: flex-start; flex-direction: column; }
+  .topbar nav { flex-wrap: wrap; }
+}

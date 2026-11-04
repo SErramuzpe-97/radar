@@ -10,7 +10,13 @@ Guía de despliegue 0 € para que el equipo entre desde fuera (ADR-005).
 3. En el equipo servidor, cada 5 min se actualiza la IP pública:
 
    ```bash
-   echo '*/5 * * * * RADAR_DUCKDNS_TOKEN=TU_TOKEN /ruta/radar/scripts/duckdns-update.sh >> /var/log/radar-duckdns.log 2>&1' | crontab -
+   crontab -e
+   ```
+
+   Añade esta línea a la tabla existente (no reemplaces el resto de tus tareas cron):
+
+   ```cron
+   */5 * * * * RADAR_DUCKDNS_TOKEN=TU_TOKEN /ruta/radar/scripts/duckdns-update.sh >> /var/log/radar-duckdns.log 2>&1
    ```
 
 ## 2. Router

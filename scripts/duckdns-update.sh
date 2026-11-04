@@ -6,6 +6,10 @@
 set -euo pipefail
 : "${RADAR_DUCKDNS_TOKEN:?falta RADAR_DUCKDNS_TOKEN (token de duckdns.org)}"
 DOMAIN="${RADAR_DUCKDNS_DOMAIN:-radar-navarra}"
-RESP=$(curl -s -m 15 "https://www.duckdns.org/update?domains=${DOMAIN}&token=${RADAR_DUCKDNS_TOKEN}&ip=")
+RESP=$(curl --fail --silent --show-error --max-time 15 --get \
+  --data-urlencode "domains=${DOMAIN}" \
+  --data-urlencode "token=${RADAR_DUCKDNS_TOKEN}" \
+  --data-urlencode "ip=" \
+  https://www.duckdns.org/update)
 echo "$(date -Is) duckdns ${DOMAIN}: ${RESP}"
-[[ "$RESP" == *"OK"* ]] || exit 1
+[[ "$RESP" == "OK" ]] || exit 1
