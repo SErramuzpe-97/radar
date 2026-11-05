@@ -114,21 +114,23 @@ pub fn reserve_search_credit(conn: &Connection) -> Result<bool> {
 }
 
 pub fn next_automatic_discovery(conn: &Connection) -> Result<Option<(i64, bool)>> {
-    let row = conn.query_row(
-        "SELECT n.id,
-           NOT EXISTS(SELECT 1 FROM web_candidatas c WHERE c.negocio_id=n.id AND c.estado='sugerida' AND c.tipo NOT IN ('red_social','directorio') AND (json_extract(c.evidencias,'$.verificacion.revisada_en') IS NULL OR datetime(json_extract(c.evidencias,'$.verificacion.revisada_en'))<datetime('now','-90 days')))
+    let candidato_revisable = "(json_extract(c.evidencias,'$.verificacion.revisada_en') IS NULL OR (json_extract(c.evidencias,'$.verificacion.resultado')='no_disponible' AND datetime(json_extract(c.evidencias,'$.verificacion.revisada_en'))<datetime('now','-1 day')) OR (json_extract(c.evidencias,'$.verificacion.resultado') NOT IN ('no_disponible','bloqueada_por_robots') AND datetime(json_extract(c.evidencias,'$.verificacion.revisada_en'))<datetime('now','-90 days')))";
+    let query = format!("SELECT n.id,
+           NOT EXISTS(SELECT 1 FROM web_candidatas c WHERE c.negocio_id=n.id AND c.estado='sugerida' AND c.tipo NOT IN ('red_social','directorio') AND {candidato_revisable})
          FROM negocios n LEFT JOIN web_estado w ON w.negocio_id=n.id
          WHERE n.admisible=1 AND n.web IS NULL
            AND NOT EXISTS(SELECT 1 FROM negocios_descartados d WHERE d.negocio_id=n.id)
            AND NOT EXISTS(SELECT 1 FROM web_estado a WHERE a.negocio_id=n.id AND a.estado='verificada_automatica' AND a.url_confirmada IS NOT NULL)
            AND NOT EXISTS(SELECT 1 FROM jobs j WHERE j.tipo='discovery' AND j.estado IN ('pendiente','en_curso') AND CAST(json_extract(j.params,'$.negocio_id') AS INTEGER)=n.id)
-           AND (EXISTS(SELECT 1 FROM web_candidatas c WHERE c.negocio_id=n.id AND c.estado='sugerida' AND c.tipo NOT IN ('red_social','directorio') AND (json_extract(c.evidencias,'$.verificacion.revisada_en') IS NULL OR datetime(json_extract(c.evidencias,'$.verificacion.revisada_en'))<datetime('now','-90 days')))
+           AND (EXISTS(SELECT 1 FROM web_candidatas c WHERE c.negocio_id=n.id AND c.estado='sugerida' AND c.tipo NOT IN ('red_social','directorio') AND {candidato_revisable})
              OR ((COALESCE(w.ultima_busqueda,'')='' OR datetime(w.ultima_busqueda)<datetime('now','-90 days'))
                AND COALESCE((SELECT creditos FROM web_search_budget WHERE periodo=strftime('%Y-%m','now')),0)<1000
                AND COALESCE((SELECT creditos FROM web_search_daily_budget WHERE dia=date('now')),0)<35))
-         ORDER BY CASE WHEN EXISTS(SELECT 1 FROM web_candidatas c WHERE c.negocio_id=n.id AND c.estado='sugerida' AND c.tipo NOT IN ('red_social','directorio') AND (json_extract(c.evidencias,'$.verificacion.revisada_en') IS NULL OR datetime(json_extract(c.evidencias,'$.verificacion.revisada_en'))<datetime('now','-90 days'))) THEN 0 ELSE 1 END,
+         ORDER BY CASE WHEN EXISTS(SELECT 1 FROM web_candidatas c WHERE c.negocio_id=n.id AND c.estado='sugerida' AND c.tipo NOT IN ('red_social','directorio') AND {candidato_revisable}) THEN 0 ELSE 1 END,
            CASE n.fuente WHEN 'overpass' THEN 0 WHEN 'industria' THEN 1 WHEN 'turismo' THEN 2 WHEN 'cooperativas' THEN 3 ELSE 4 END,
-           COALESCE(w.ultima_busqueda,''),n.id LIMIT 1",
+           COALESCE(w.ultima_busqueda,''),n.id LIMIT 1");
+    let row = conn.query_row(
+        &query,
         [],
         |r| Ok((r.get::<_, i64>(0)?, r.get::<_, bool>(1)?),),
     ).optional()?;
@@ -525,13 +527,18 @@ pub async fn discover(store: &Store, id: i64, allow_search: bool) -> Result<Valu
         if candidate.tipo == "red_social" {
             continue;
         }
-        if !public_http::robots_allowed(&candidate.url)
-            .await
-            .unwrap_or(false)
-        {
-            let c = store.lock().unwrap();
-            save_candidate_verification(&c, candidate, json!({"revisada_en":store::ahora(),"resultado":"bloqueada_por_robots"}))?;
-            continue;
+        match public_http::robots_allowed(&candidate.url).await {
+            Ok(true) => {}
+            Ok(false) => {
+                let c = store.lock().unwrap();
+                save_candidate_verification(&c, candidate, json!({"revisada_en":store::ahora(),"resultado":"bloqueada_por_robots"}))?;
+                continue;
+            }
+            Err(_) => {
+                let c = store.lock().unwrap();
+                save_candidate_verification(&c, candidate, json!({"revisada_en":store::ahora(),"resultado":"no_disponible"}))?;
+                continue;
+            }
         }
         if let Ok(p) = public_http::fetch(&candidate.url, 12).await {
             if (200..300).contains(&p.status) {
