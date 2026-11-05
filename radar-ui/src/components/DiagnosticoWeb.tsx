@@ -185,7 +185,7 @@ export function DiagnosticoWeb({ id, web, name }: { id: number; web?: string | n
       </div>
       {findings.length ? Array.from(groups.entries()).map(([category, items]) => <section class="diagnostico-grupo" key={category}>
         <button type="button" class="diagnostico-grupo-titulo" aria-expanded={Boolean(openGroups[category])} aria-controls={`hallazgos-${id}-${category}`} onClick={() => setOpenGroups(current => ({ ...current, [category]: !current[category] }))}>
-          <span>{categoriaEs(category)}</span><span class="muted">({items.length})</span><span class="diagnostico-grupo-icono" aria-hidden="true" />
+          <span>{categoriaEs(category)}</span><span class="muted">({items.length})</span><svg class="diagnostico-grupo-icono" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" /></svg>
         </button>
         <div id={`hallazgos-${id}-${category}`} class={`diagnostico-grupo-contenido ${openGroups[category] ? "abierto" : ""}`} aria-hidden={!openGroups[category]} inert={!openGroups[category]}>
           <div class="diagnostico-grupo-interior">

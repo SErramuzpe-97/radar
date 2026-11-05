@@ -372,13 +372,13 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .web-confirmada { display:flex;align-items:flex-start;flex-wrap:wrap;gap:8px; }
 .web-candidata { padding:12px; }
 .diagnostico-web { padding-top:8px; }
-.diagnostico-cabecera { display:grid;gap:10px; }
+.diagnostico-cabecera { display:grid;gap:14px; }
 .diagnostico-cabecera h3 { margin:0; }
 .diagnostico-web-toolbar { display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0; }
 .diagnostico-web-badge { display:inline-flex;align-items:center;gap:7px;width:fit-content;max-width:100%;min-width:0;padding:6px 10px;border:1px solid var(--borde);border-radius:999px;background:var(--panel);color:#304b3a;text-decoration:none;overflow-wrap:anywhere; }
 .diagnostico-web-badge:hover { background:#e9ece4; }
 .diagnostico-dispositivos { display:flex;gap:6px; }
-.diagnostico-resumen { display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px; }
+.diagnostico-resumen { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:18px; }
 .diagnostico-resumen article { display:grid;gap:7px;border:1px solid var(--borde);border-top:3px solid #b68a2f;border-radius:12px;padding:12px;background:var(--panel); }
 .diagnostico-puntuacion > span { color:var(--muted);font-size:.88rem; }
 .diagnostico-puntuacion > strong { font-size:1.35rem;line-height:1.2; }
@@ -392,8 +392,7 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .diagnostico-grupo { margin:18px 0; }
 .diagnostico-grupo-titulo { display:flex;align-items:center;gap:6px;width:100%;min-height:44px;padding:8px 4px;border:0;border-bottom:1px solid var(--borde);border-radius:0;background:transparent;color:var(--texto);text-align:left;font:inherit;font-weight:700;cursor:pointer; }
 .diagnostico-grupo-titulo:hover { background:#e9ece4; }
-.diagnostico-grupo-icono { margin-left:auto;color:var(--muted);transition:transform .24s ease; }
-.diagnostico-grupo-icono::before { content:"⌄"; }
+.diagnostico-grupo-icono { flex:0 0 20px;width:20px;height:20px;margin-left:auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--muted);transition:transform .24s ease; }
 .diagnostico-grupo-titulo[aria-expanded="true"] .diagnostico-grupo-icono { transform:rotate(180deg); }
 .diagnostico-grupo-contenido { display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .24s ease,opacity .2s ease; }
 .diagnostico-grupo-contenido.abierto { grid-template-rows:1fr;opacity:1; }
