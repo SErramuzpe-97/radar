@@ -389,6 +389,9 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .ficha-cabecera h2 { margin:0 0 12px;font-size:1.2rem; }
 .rubro-detalle { display:block;color:var(--muted);margin-top:3px; }
 .ficha-tabs { display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px; }
+.ficha-device-switch { display:flex;flex:0 0 auto;align-items:center;gap:6px;margin-left:auto;padding-left:12px; }
+.ficha-device-switch button { flex:0 0 auto;min-height:40px;padding:6px 10px;white-space:nowrap; }
+.ficha-device-switch button[aria-pressed="true"] { background:#1e2428;color:#fff;border-color:#1e2428; }
 .ficha-contenido { flex:1 1 0;min-height:0;min-width:0;width:100%;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:0 0 20px; }
 .ficha-contenido > :not(.informe-html):not(.auditoria-informe-tab) { margin-left:16px;margin-right:16px; }
 .ficha-contenido.informe-activo { display:flex; flex-direction:column; overflow:hidden; padding:8px 10px 10px; }
@@ -467,7 +470,6 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .auditoria-acciones { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
 .auditoria-motores,.auditoria-dispositivos { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 8px; }
 .auditoria-informe-tab { display:flex; flex:1 1 auto; flex-direction:column; min-height:0; overflow:hidden; }
-.auditoria-informe-tab .auditoria-dispositivos { flex:0 0 auto; margin:0 0 8px; }
 .auditoria-aparte-app { display:flex;flex-direction:column;height:100dvh;overflow:hidden; }
 .informe-aparte-topbar { flex:0 0 auto;padding-right:24px;padding-left:24px; }
 .informe-aparte-topbar > button { min-height:42px; }
@@ -527,7 +529,7 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .diagnostico-hallazgo > p { line-height:1.6; }
 .diagnostico-original,.informe-detalle-original { margin-top:10px;border-top:1px solid var(--borde);padding-top:8px;color:var(--muted); }
 .informe-espanol { flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:4px 2px 28px; }
-.informe-espanol-cabecera { display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin:4px 0 18px; }
+.informe-espanol-cabecera { display:flex;align-items:center;justify-content:space-between;gap:14px;margin:4px 0 18px; }
 .informe-espanol-acciones { display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px; }
 .informe-original-enlace { display:inline-flex;align-items:center;min-height:38px;padding:6px 10px;border:1px solid var(--borde);border-radius:7px;background:var(--panel);color:#304b3a;text-decoration:none;font-weight:600;white-space:nowrap; }
 .informe-espanol-cabecera h3 { margin:3px 0;font-size:1.35rem; }

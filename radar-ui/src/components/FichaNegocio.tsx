@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { detalle, seleccionadoId, guardarPipeline, registrarEvento, recargar } from "../stores/negocios";
 import { WebNegocio } from "./WebNegocio";
-import { AuditoriaTecnica } from "./AuditoriaTecnica";
+import { AuditoriaTecnica, type Device, type Engine } from "./AuditoriaTecnica";
 import { DiagnosticoWeb } from "./DiagnosticoWeb";
 import type { components } from "../api/schema";
 import { rubroNombre } from "../rubros";
@@ -15,6 +15,7 @@ export function FichaNegocio({ origen }: { origen: "tabla" | "mapa" }) {
   const d = detalle.value;
   const [tab,setTab]=useState("ficha");
   const [auditEngines,setAuditEngines]=useState<string[]>([]);
+  const [deviceByEngine,setDeviceByEngine]=useState<Record<Engine,Device>>({lighthouse:"mobile",siteone:"mobile"});
   const ref = useRef<HTMLElement>(null);
   const [estado, setEstado] = useState("nuevo");
   const [tipo, setTipo] = useState("visita");
@@ -24,7 +25,7 @@ export function FichaNegocio({ origen }: { origen: "tabla" | "mapa" }) {
   const [fallo, setFallo] = useState(false);
   const cerrar = () => transicionar(() => { detalle.value = null; seleccionadoId.value = null; });
   useEffect(() => { setEstado(d?.pipeline?.estado ?? "nuevo"); }, [d?.negocio.id, d?.pipeline?.estado]);
-  useEffect(() => { setNotas(""); setMensaje(""); setTab("ficha"); setAuditEngines([]); ref.current?.querySelector(".ficha-contenido")?.scrollTo(0,0); }, [d?.negocio.id]);
+  useEffect(() => { setNotas(""); setMensaje(""); setTab("ficha"); setAuditEngines([]); setDeviceByEngine({lighthouse:"mobile",siteone:"mobile"}); ref.current?.querySelector(".ficha-contenido")?.scrollTo(0,0); }, [d?.negocio.id]);
   const actualizarMotores = useCallback((motores: string[]) => setAuditEngines(motores), []);
   useEffect(() => { if (["lighthouse","siteone"].includes(tab) && !auditEngines.includes(tab)) setTab("auditoria"); }, [tab,auditEngines]);
   useEffect(() => {
@@ -67,7 +68,7 @@ export function FichaNegocio({ origen }: { origen: "tabla" | "mapa" }) {
     <header class="ficha-cabecera"><button class="secundario cerrar-ficha" onClick={cerrar} aria-label={`Volver a ${origen === "tabla" ? "la tabla" : "el mapa"}`}>← <span>Volver a {origen === "tabla" ? "tabla" : "mapa"}</span></button>
     <div class="ficha-tamano"><button type="button" class="secundario" onClick={() => document.documentElement.style.removeProperty("--radar-ficha-width")}>Reset tamaño</button></div>
     <h2>{n.nombre}</h2>
-    <div class="ficha-tabs" role="tablist" aria-label="Contenido de la ficha">{[["ficha","Ficha"],["auditoria","Auditoría"],["diagnostico","Diagnóstico web"],...(auditEngines.includes("lighthouse")?[["lighthouse","Lighthouse"]]:[]),...(auditEngines.includes("siteone")?[["siteone","SiteOne"]]:[])].map(([v,l])=><button key={v} role="tab" aria-selected={tab===v} onClick={()=>transicionar(()=>setTab(v))} class={tab===v?"":"secundario"}>{l}</button>)}</div></header>
+    <div class="ficha-tabs" role="tablist" aria-label="Contenido de la ficha">{[["ficha","Ficha"],["auditoria","Auditoría"],["diagnostico","Diagnóstico web"],...(auditEngines.includes("lighthouse")?[["lighthouse","Lighthouse"]]:[]),...(auditEngines.includes("siteone")?[["siteone","SiteOne"]]:[])].map(([v,l])=><button key={v} role="tab" aria-selected={tab===v} onClick={()=>transicionar(()=>setTab(v))} class={tab===v?"":"secundario"}>{l}</button>)}{(tab==="lighthouse"||tab==="siteone")&&<div class="ficha-device-switch" role="group" aria-label="Dispositivo auditado">{([["mobile","Móvil"],["desktop","Escritorio"]] as [Device,string][]).map(([device,label])=><button type="button" key={device} aria-pressed={deviceByEngine[tab as Engine]===device} class={deviceByEngine[tab as Engine]===device?"":"secundario"} onClick={()=>setDeviceByEngine(current=>({...current,[tab]:device}))}>{label}</button>)}</div>}</div></header>
     <div class={`ficha-contenido ${tab==="lighthouse"||tab==="siteone"?"informe-activo":""}`}>
     {tab==="ficha"&&<>
     <div class="ficha-etiquetas"><span class="badge">{rubroNombre(n.rubro ?? n.sector ?? n.categoria ?? "otro")}</span>{(rubroEvidence as any).tipo_entidad&&<span class="badge">{(rubroEvidence as any).tipo_entidad}</span>}{n.score_potencial != null && <span class={`badge ${n.score_potencial >= 70 ? "potencial-alto" : n.score_potencial >= 50 ? "potencial-medio" : "potencial-bajo"}`}>Potencial {n.score_potencial}/100 · {n.prioridad_comercial}</span>}<span class={`badge pipeline-${d.pipeline?.estado ?? "nuevo"}`}>{ESTADOS[d.pipeline?.estado ?? "nuevo"]}</span></div>
@@ -97,7 +98,7 @@ export function FichaNegocio({ origen }: { origen: "tabla" | "mapa" }) {
     </section>
     </>}
     {tab==="diagnostico"&&<DiagnosticoWeb id={n.id} web={d.web_info.url_confirmada} name={n.nombre}/>}
-    <AuditoriaTecnica id={n.id} web={d.web_info.url_confirmada} mode={tab==="auditoria"?"summary":tab==="lighthouse"||tab==="siteone"?tab:null} onAvailabilityChange={actualizarMotores}/>
+    <AuditoriaTecnica id={n.id} web={d.web_info.url_confirmada} mode={tab==="auditoria"?"summary":tab==="lighthouse"||tab==="siteone"?tab:null} onAvailabilityChange={actualizarMotores} deviceByEngine={deviceByEngine} onDeviceChange={(engine,device)=>setDeviceByEngine(current=>({...current,[engine]:device}))}/>
     </div>
     <div class="ficha-resize-handle" role="separator" aria-orientation="vertical" aria-label="Cambiar ancho de la ficha" tabIndex={0}
       onPointerDown={e => {

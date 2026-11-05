@@ -6,7 +6,8 @@ import {Desplegable} from './Desplegable';
 
 type Estado=components['schemas']['EstadoAuditoriaTecnica'];
 type Report=components['schemas']['AuditoriaTecnica'];
-type Engine='lighthouse'|'siteone';
+export type Engine='lighthouse'|'siteone';
+export type Device='mobile'|'desktop';
 type Mode='summary'|Engine|null;
 const motores:[Engine,string][]=[['lighthouse','Lighthouse'],['siteone','SiteOne']];
 const dispositivos=[['mobile','Móvil'],['desktop','Escritorio']] as const;
@@ -67,23 +68,24 @@ function InformeEspanol({report}:{report:Report}){
  </section>;
 }
 
-export function AuditoriaTecnica({id,web,mode,onAvailabilityChange}:{id:number;web?:string|null;mode:Mode;onAvailabilityChange?:(motors:Engine[])=>void}){
- const [data,setData]=useState<Estado|null>(null),[deviceByEngine,setDeviceByEngine]=useState<Record<Engine,string>>({lighthouse:'mobile',siteone:'mobile'}),[error,setError]=useState(''),[busy,setBusy]=useState(false);
- useEffect(()=>{let live=true,timer:ReturnType<typeof setTimeout>;setData(null);setDeviceByEngine({lighthouse:'mobile',siteone:'mobile'});setError('');
+export function AuditoriaTecnica({id,web,mode,onAvailabilityChange,deviceByEngine:controlledDevices,onDeviceChange}:{id:number;web?:string|null;mode:Mode;onAvailabilityChange?:(motors:Engine[])=>void;deviceByEngine?:Record<Engine,Device>;onDeviceChange?:(engine:Engine,device:Device)=>void}){
+ const [data,setData]=useState<Estado|null>(null),[internalDevices,setInternalDevices]=useState<Record<Engine,Device>>({lighthouse:'mobile',siteone:'mobile'}),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+ const deviceByEngine=controlledDevices??internalDevices;
+ const setDevice=(engine:Engine,device:Device)=>controlledDevices&&onDeviceChange?onDeviceChange(engine,device):setInternalDevices(old=>({...old,[engine]:device}));
+ useEffect(()=>{let live=true,timer:ReturnType<typeof setTimeout>;setData(null);if(!controlledDevices)setInternalDevices({lighthouse:'mobile',siteone:'mobile'});setError('');
   const load=async()=>{try{const d=await consultarAuditoria(id);if(live){setData(d);if(['pendiente','en_curso'].includes(d.job?.estado??''))timer=setTimeout(load,5000);}}catch(e){if(live)setError(errorAuditoriaEs(e));}};void load();return()=>{live=false;clearTimeout(timer);};
  },[id,web,busy]);
  const latest=useMemo(()=>{const out:Record<string,Report>={};for(const r of data?.informes??[]){if(web&&r.url!==web)continue;if(!r.archivos.includes('html'))continue;const key=`${r.motor}:${r.dispositivo}`;if(!out[key]||r.fecha>out[key].fecha)out[key]=r;}return out;},[data,web]);
  const available=useMemo(()=>motores.filter(([key])=>Object.keys(latest).some(k=>k.startsWith(`${key}:`))).map(([key])=>key),[latest]);
  const availableKey=available.join(',');
  useEffect(()=>{onAvailabilityChange?.(available);},[availableKey,id,onAvailabilityChange]);
- useEffect(()=>{for(const engine of ['lighthouse','siteone'] as Engine[]){if(!latest[`${engine}:mobile`]&&latest[`${engine}:desktop`])setDeviceByEngine(old=>old[engine]==='desktop'?old:{...old,[engine]:'desktop'});}},[latest]);
+ useEffect(()=>{for(const engine of ['lighthouse','siteone'] as Engine[]){if(!latest[`${engine}:mobile`]&&latest[`${engine}:desktop`]&&deviceByEngine[engine]!=='desktop')setDevice(engine,'desktop');}},[latest]);
  const selectedEngine=mode==='lighthouse'||mode==='siteone'?mode:null;
  const device=selectedEngine?deviceByEngine[selectedEngine]:'mobile';
  const activeReport=selectedEngine?latest[`${selectedEngine}:${device}`]:undefined;
  const enCurso=['pendiente','en_curso'].includes(data?.job?.estado??'');
  if(mode===null)return null;
  if(mode!=='summary')return <section class="auditoria-informe-tab">
-  <div class="auditoria-dispositivos" role="tablist" aria-label="Dispositivo auditado">{dispositivos.map(([d,label])=><button key={d} role="tab" aria-selected={device===d} class={device===d?'':'secundario'} onClick={()=>selectedEngine&&setDeviceByEngine(old=>({...old,[selectedEngine]:d}))}>{label}</button>)}</div>
   {activeReport?<InformeEspanol key={activeReport.id} report={activeReport}/>:<div class="informe-cargando muted">Todavía no hay un informe HTML para este dispositivo.</div>}
  </section>;
  return <section class="auditoria-tecnica">
