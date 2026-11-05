@@ -54,7 +54,7 @@ impl From<FiltrosQuery> for FiltrosNegocios {
             sector: f.sector,
             rubro: f.rubro,
             tipo_entidad: f.tipo_entidad,
-            estado_web: f.estado_web.as_deref().and_then(EstadoWeb::parse),
+            estado_web: f.estado_web,
             estado_auditoria_tecnica: f.estado_auditoria_tecnica,
             estado_pipeline: f.estado_pipeline,
             prioridad: f.prioridad,
