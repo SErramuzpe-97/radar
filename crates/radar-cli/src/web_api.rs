@@ -170,7 +170,10 @@ pub async fn visit_state(
 ) -> ApiResult<Json<serde_json::Value>> {
     let c = st.store.lock().unwrap();
     if store::get_negocio(&c, id).map_err(err500)?.is_none() {
-        return Err(ApiError(StatusCode::NOT_FOUND, "Negocio no encontrado".into()));
+        return Err(ApiError(
+            StatusCode::NOT_FOUND,
+            "Negocio no encontrado".into(),
+        ));
     }
     Ok(Json(technical::visit_state(&c, id).map_err(err500)?))
 }

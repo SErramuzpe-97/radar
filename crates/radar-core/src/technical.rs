@@ -144,7 +144,10 @@ pub fn discovery_job(conn: &Connection, params: &BusquedaWebParams) -> Result<Jo
     Ok(job)
 }
 pub fn automatic_discovery_job(conn: &Connection, id: i64, buscar: bool) -> Result<Job> {
-    let job = new_job(TipoJob::Discovery, json!({"negocio_id":id,"pendientes":false,"buscar":buscar,"automatico":true}));
+    let job = new_job(
+        TipoJob::Discovery,
+        json!({"negocio_id":id,"pendientes":false,"buscar":buscar,"automatico":true}),
+    );
     store::insert_job(conn, &job)?;
     Ok(job)
 }
@@ -210,7 +213,9 @@ pub fn capture_catalog(conn: &Connection, id: i64) -> Result<Vec<Value>> {
             .into_iter()
             .flatten();
         for shot in shots {
-            let Some(key) = shot["key"].as_str() else { continue };
+            let Some(key) = shot["key"].as_str() else {
+                continue;
+            };
             if !report.archivos.iter().any(|file| file == key) {
                 continue;
             }
@@ -234,7 +239,7 @@ pub fn capture_catalog(conn: &Connection, id: i64) -> Result<Vec<Value>> {
             }));
         }
     }
-    out.sort_by(|a,b| b["fecha"].as_str().cmp(&a["fecha"].as_str()));
+    out.sort_by(|a, b| b["fecha"].as_str().cmp(&a["fecha"].as_str()));
     out.truncate(100);
     Ok(out)
 }
@@ -258,7 +263,10 @@ pub fn visit_state(conn: &Connection, id: i64) -> Result<Value> {
 }
 
 pub fn update_visit_state(conn: &Connection, id: i64, incoming: &Value) -> Result<Value> {
-    anyhow::ensure!(incoming["capturas"].is_array(), "La lista de capturas no es válida");
+    anyhow::ensure!(
+        incoming["capturas"].is_array(),
+        "La lista de capturas no es válida"
+    );
     let captures = capture_catalog(conn, id)?;
     let available: std::collections::HashSet<&str> = captures
         .iter()
@@ -270,23 +278,40 @@ pub fn update_visit_state(conn: &Connection, id: i64, incoming: &Value) -> Resul
     let mut clean = Vec::new();
     let mut kept = 0;
     for capture in requested {
-        let capture_id = capture["capture_id"].as_str().context("Falta identificar una captura")?;
-        anyhow::ensure!(available.contains(capture_id), "La captura no pertenece a este negocio o auditoría");
-        anyhow::ensure!(seen.insert(capture_id), "La visita contiene capturas repetidas");
+        let capture_id = capture["capture_id"]
+            .as_str()
+            .context("Falta identificar una captura")?;
+        anyhow::ensure!(
+            available.contains(capture_id),
+            "La captura no pertenece a este negocio o auditoría"
+        );
+        anyhow::ensure!(
+            seen.insert(capture_id),
+            "La visita contiene capturas repetidas"
+        );
         let status = capture["estado"].as_str().unwrap_or("pendiente");
-        anyhow::ensure!(["pendiente", "conservar", "descartada"].contains(&status), "Estado de captura no válido");
+        anyhow::ensure!(
+            ["pendiente", "conservar", "descartada"].contains(&status),
+            "Estado de captura no válido"
+        );
         if status == "conservar" {
             kept += 1;
             anyhow::ensure!(kept <= 7, "Una visita puede conservar hasta siete capturas");
         }
         let bounded = |field: &str, max: usize| -> Result<Value> {
             let value = capture[field].as_str().unwrap_or("").trim();
-            anyhow::ensure!(value.len() <= max, "El texto de la captura supera el límite permitido");
+            anyhow::ensure!(
+                value.len() <= max,
+                "El texto de la captura supera el límite permitido"
+            );
             Ok(json!(value))
         };
         let bounded_percent = |field: &str| -> Result<Value> {
             let value = capture[field].as_f64();
-            anyhow::ensure!(value.is_none_or(|v| (0.0..=100.0).contains(&v)), "La anotación de captura no es válida");
+            anyhow::ensure!(
+                value.is_none_or(|v| (0.0..=100.0).contains(&v)),
+                "La anotación de captura no es válida"
+            );
             Ok(value.map_or(Value::Null, |v| json!(v)))
         };
         clean.push(json!({
@@ -310,7 +335,7 @@ pub fn update_visit_state(conn: &Connection, id: i64, incoming: &Value) -> Resul
     )?;
     let mut result = value;
     result["actualizado"] = json!(updated);
-    result["catalogo"] = json!(capture_catalog(conn,id)?);
+    result["catalogo"] = json!(capture_catalog(conn, id)?);
     Ok(result)
 }
 pub fn update_finding_review(

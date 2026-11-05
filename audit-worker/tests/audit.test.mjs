@@ -12,6 +12,10 @@ test('Lighthouse conserva perfil y métricas reales; no inventa INP',()=>{
  const desktop=lighthouseResult({configSettings:{formFactor:'desktop'},audits:{}});
  assert.equal(mobile.scores.performance,51);assert.equal(mobile.metrics.find(m=>m.label==='LCP').value,4400);assert.equal(mobile.environment.profile,'mobile');assert.equal(desktop.environment.profile,'desktop');assert.equal(mobile.metrics.some(m=>m.label==='INP'),false);
 });
+test('Lighthouse tolera auditorías sin una lista de elementos',()=>{
+ const r=lighthouseResult({lighthouseVersion:'13.6.0',audits:{'accessibility-feedback':{score:0,scoreDisplayMode:'numeric',title:'Feedback',details:{items:{summary:'not an array'}}}}});
+ assert.equal(r.issues.length,1);assert.deepEqual(r.issues[0].nodes,[]);
+});
 test('SiteOne identifica fallos por URL y conserva límites; JS sustituye evidencia HTML',()=>{
  const plain=siteoneResult({results:[{url:'https://example.com/a',type:1,status:200}],tables:{seo:{rows:[{urlPathAndQuery:'/a',title:'',description:'',h1:''}]}},summary:{items:[{aplCode:'skipped',status:'CRITICAL',text:'Skipped URLs'}]}},'https://example.com',1);
  assert.equal(plain.coverage.limit_reached,true);assert.ok(plain.issues.some(i=>i.code==='title-missing'&&i.url==='https://example.com/a'));assert.equal(plain.issues.some(i=>i.code==='skipped'),false);

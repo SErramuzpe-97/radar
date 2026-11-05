@@ -10,7 +10,7 @@ const ESTADOS: Record<string, string> = { nuevo:"Nuevo", contactado:"Contactado"
 const ACTIVIDADES: Record<string, string> = { visita:"Visita", llamada:"Llamada", email:"Email", reunion:"Reunión", oferta:"Oferta" };
 const SERVICIOS: Record<string, string> = { creacion_web:"Creación web", landing:"Landing", seo_on_page:"SEO on-page", hosting:"Hosting" };
 
-export function FichaNegocio() {
+export function FichaNegocio({ origen }: { origen: "tabla" | "mapa" }) {
   const d = detalle.value;
   const [tab,setTab]=useState("ficha");
   const [auditEngines,setAuditEngines]=useState<string[]>([]);
@@ -27,7 +27,7 @@ export function FichaNegocio() {
   const actualizarMotores = useCallback((motores: string[]) => setAuditEngines(motores), []);
   useEffect(() => { if (["lighthouse","siteone"].includes(tab) && !auditEngines.includes(tab)) setTab("auditoria"); }, [tab,auditEngines]);
   useEffect(() => {
-    if (!d || !window.matchMedia("(max-width: 899px)").matches) return;
+    if (!d || !window.matchMedia("(max-width: 1199px), (any-pointer: coarse) and (max-width: 1600px)").matches) return;
     const anterior = document.activeElement as HTMLElement | null;
     ref.current?.focus();
     const key = (e: KeyboardEvent) => {
@@ -63,7 +63,7 @@ export function FichaNegocio() {
     finally { setGuardando(null); }
   };
   return <aside class="ficha ficha-abierta" ref={ref} tabIndex={-1} aria-label={`Ficha de ${n.nombre}`}>
-    <header class="ficha-cabecera"><button class="secundario cerrar-ficha" onClick={cerrar} aria-label="Cerrar ficha">Cerrar ✕</button>
+    <header class="ficha-cabecera"><button class="secundario cerrar-ficha" onClick={cerrar} aria-label={`Volver a ${origen === "tabla" ? "la tabla" : "el mapa"}`}>← <span>Volver a {origen === "tabla" ? "tabla" : "mapa"}</span></button>
     <div class="ficha-tamano"><button type="button" class="secundario" onClick={() => document.documentElement.style.removeProperty("--radar-ficha-width")}>Reset tamaño</button></div>
     <h2>{n.nombre}</h2>
     <div class="ficha-tabs" role="tablist" aria-label="Contenido de la ficha">{[["ficha","Ficha"],["auditoria","Auditoría"],["diagnostico","Diagnóstico web"],...(auditEngines.includes("lighthouse")?[["lighthouse","Lighthouse"]]:[]),...(auditEngines.includes("siteone")?[["siteone","SiteOne"]]:[])].map(([v,l])=><button key={v} role="tab" aria-selected={tab===v} onClick={()=>setTab(v)} class={tab===v?"":"secundario"}>{l}</button>)}</div></header>

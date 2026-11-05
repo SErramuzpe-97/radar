@@ -65,6 +65,75 @@ pub fn init(conn: &Connection) -> Result<()> {
         )?;
         tx.commit()?;
     }
+    let revised_verifier: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version=7)",
+        [],
+        |r| r.get(0),
+    )?;
+    if !revised_verifier {
+        let tx = conn.unchecked_transaction()?;
+        // Recheck rejected candidates carrying first-party source evidence:
+        // OSM website tags belong to a specific mapped business, and official
+        // registry records bind their URL to an exact registered business.
+        // Also retry pages with a name and matching public contact detail.
+        tx.execute(
+            "UPDATE web_candidatas SET evidencias=json_remove(evidencias,'$.verificacion.revisada_en')
+             WHERE estado='sugerida'
+               AND json_extract(evidencias,'$.verificacion.revisada_en') IS NOT NULL
+               AND (json_extract(evidencias,'$.verificacion.resultado')='sin_pruebas_suficientes'
+                 OR json_extract(evidencias,'$.verificacion.resultado')='directorio')
+               AND (proveedor='OSM'
+                 OR json_extract(evidencias,'$.registro_oficial')=1
+                 OR (json_extract(evidencias,'$.verificacion.nombre_coincide')=1
+                   AND (json_extract(evidencias,'$.verificacion.telefono_coincide')=1
+                     OR json_extract(evidencias,'$.verificacion.direccion_coincide')=1)))",
+            [],
+        )?;
+        tx.execute(
+            "INSERT INTO schema_migrations(version,applied_at) VALUES(7,?1)",
+            [store::ahora()],
+        )?;
+        tx.commit()?;
+    }
+    let directory_cleanup: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version=8)",
+        [],
+        |r| r.get(0),
+    )?;
+    if !directory_cleanup {
+        let mut stmt = conn.prepare(
+            "SELECT negocio_id,url_confirmada FROM web_estado
+             WHERE estado='verificada_automatica' AND origen='verificacion_automatica'
+               AND url_confirmada IS NOT NULL",
+        )?;
+        let confirmed = stmt
+            .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        drop(stmt);
+        let tx = conn.unchecked_transaction()?;
+        for (id, url) in confirmed {
+            if es_directorio(&url) || crate::scoring::es_red_social(&url) {
+                tx.execute("UPDATE negocios SET web=NULL WHERE id=?1", [id])?;
+                tx.execute(
+                    "UPDATE web_estado SET estado='pendiente',url_confirmada=NULL,origen=NULL,
+                     confirmado_en=NULL,generacion=generacion+1,aviso='La URL era un directorio o mapa, no una web propia.'
+                     WHERE negocio_id=?1 AND origen='verificacion_automatica'",
+                    [id],
+                )?;
+                tx.execute(
+                    "UPDATE web_candidatas SET estado='sugerida',tipo='directorio',
+                     evidencias=json_set(evidencias,'$.verificacion.resultado','directorio','$.verificacion.directorio',1)
+                     WHERE negocio_id=?1 AND url=?2",
+                    params![id, url],
+                )?;
+            }
+        }
+        tx.execute(
+            "INSERT INTO schema_migrations(version,applied_at) VALUES(8,?1)",
+            [store::ahora()],
+        )?;
+        tx.commit()?;
+    }
     Ok(())
 }
 pub fn search_query(n: &Negocio, address: Option<&str>, city: Option<&str>) -> String {
@@ -101,11 +170,25 @@ pub fn reserve_search_credit(conn: &Connection) -> Result<bool> {
     let month = chrono::Utc::now().format("%Y-%m").to_string();
     let day = chrono::Utc::now().format("%Y-%m-%d").to_string();
     let tx = conn.unchecked_transaction()?;
-    tx.execute("INSERT OR IGNORE INTO web_search_budget(periodo) VALUES(?1)", [&month])?;
-    tx.execute("INSERT OR IGNORE INTO web_search_daily_budget(dia) VALUES(?1)", [&day])?;
-    let monthly = tx.execute("UPDATE web_search_budget SET creditos=creditos+1 WHERE periodo=?1 AND creditos<1000", [&month])?;
-    let daily = tx.execute("UPDATE web_search_daily_budget SET creditos=creditos+1 WHERE dia=?1 AND creditos<35", [&day])?;
-    if monthly == 0 || daily == 0 {
+    tx.execute(
+        "INSERT OR IGNORE INTO web_search_budget(periodo) VALUES(?1)",
+        [&month],
+    )?;
+    tx.execute(
+        "INSERT OR IGNORE INTO web_search_daily_budget(dia) VALUES(?1)",
+        [&day],
+    )?;
+    let monthly = tx.execute(
+        "UPDATE web_search_budget SET creditos=creditos+1 WHERE periodo=?1 AND creditos<1000",
+        [&month],
+    )?;
+    // Use the complete monthly allowance as soon as it is available. The daily
+    // counter is retained for usage visibility, but must not strand credits.
+    tx.execute(
+        "UPDATE web_search_daily_budget SET creditos=creditos+1 WHERE dia=?1",
+        [&day],
+    )?;
+    if monthly == 0 {
         tx.rollback()?;
         return Ok(false);
     }
@@ -115,25 +198,25 @@ pub fn reserve_search_credit(conn: &Connection) -> Result<bool> {
 
 pub fn next_automatic_discovery(conn: &Connection) -> Result<Option<(i64, bool)>> {
     let candidato_revisable = "(json_extract(c.evidencias,'$.verificacion.revisada_en') IS NULL OR (json_extract(c.evidencias,'$.verificacion.resultado')='no_disponible' AND datetime(json_extract(c.evidencias,'$.verificacion.revisada_en'))<datetime('now','-1 day')) OR (json_extract(c.evidencias,'$.verificacion.resultado') NOT IN ('no_disponible','bloqueada_por_robots') AND datetime(json_extract(c.evidencias,'$.verificacion.revisada_en'))<datetime('now','-90 days')))";
+    let busqueda_disponible = "((COALESCE(w.ultima_busqueda,'')='' OR datetime(w.ultima_busqueda)<datetime('now','-90 days'))
+               AND COALESCE((SELECT creditos FROM web_search_budget WHERE periodo=strftime('%Y-%m','now')),0)<1000)";
     let query = format!("SELECT n.id,
-           NOT EXISTS(SELECT 1 FROM web_candidatas c WHERE c.negocio_id=n.id AND c.estado='sugerida' AND c.tipo NOT IN ('red_social','directorio') AND {candidato_revisable})
+           {busqueda_disponible}
          FROM negocios n LEFT JOIN web_estado w ON w.negocio_id=n.id
          WHERE n.admisible=1 AND n.web IS NULL
            AND NOT EXISTS(SELECT 1 FROM negocios_descartados d WHERE d.negocio_id=n.id)
            AND NOT EXISTS(SELECT 1 FROM web_estado a WHERE a.negocio_id=n.id AND a.estado='verificada_automatica' AND a.url_confirmada IS NOT NULL)
            AND NOT EXISTS(SELECT 1 FROM jobs j WHERE j.tipo='discovery' AND j.estado IN ('pendiente','en_curso') AND CAST(json_extract(j.params,'$.negocio_id') AS INTEGER)=n.id)
            AND (EXISTS(SELECT 1 FROM web_candidatas c WHERE c.negocio_id=n.id AND c.estado='sugerida' AND c.tipo NOT IN ('red_social','directorio') AND {candidato_revisable})
-             OR ((COALESCE(w.ultima_busqueda,'')='' OR datetime(w.ultima_busqueda)<datetime('now','-90 days'))
-               AND COALESCE((SELECT creditos FROM web_search_budget WHERE periodo=strftime('%Y-%m','now')),0)<1000
-               AND COALESCE((SELECT creditos FROM web_search_daily_budget WHERE dia=date('now')),0)<35))
+             OR {busqueda_disponible})
          ORDER BY CASE WHEN EXISTS(SELECT 1 FROM web_candidatas c WHERE c.negocio_id=n.id AND c.estado='sugerida' AND c.tipo NOT IN ('red_social','directorio') AND {candidato_revisable}) THEN 0 ELSE 1 END,
            CASE n.fuente WHEN 'overpass' THEN 0 WHEN 'industria' THEN 1 WHEN 'turismo' THEN 2 WHEN 'cooperativas' THEN 3 ELSE 4 END,
            COALESCE(w.ultima_busqueda,''),n.id LIMIT 1");
-    let row = conn.query_row(
-        &query,
-        [],
-        |r| Ok((r.get::<_, i64>(0)?, r.get::<_, bool>(1)?),),
-    ).optional()?;
+    let row = conn
+        .query_row(&query, [], |r| {
+            Ok((r.get::<_, i64>(0)?, r.get::<_, bool>(1)?))
+        })
+        .optional()?;
     Ok(row)
 }
 pub fn info(conn: &Connection, id: i64) -> Result<WebInfo> {
@@ -247,11 +330,22 @@ pub fn confirmed(
     Ok(())
 }
 
-pub fn verified_automatically(conn: &Connection, id: i64, raw_url: &str, evidence: &Value) -> Result<()> {
+pub fn verified_automatically(
+    conn: &Connection,
+    id: i64,
+    raw_url: &str,
+    evidence: &Value,
+) -> Result<()> {
     let url = public_http::normalize(raw_url)?.to_string();
-    anyhow::ensure!(!crate::scoring::es_red_social(&url), "Una red social no se puede verificar como web propia");
+    anyhow::ensure!(
+        !crate::scoring::es_red_social(&url),
+        "Una red social no se puede verificar como web propia"
+    );
     let tx = conn.unchecked_transaction()?;
-    let changed = tx.execute("UPDATE negocios SET web=?2 WHERE id=?1 AND admisible=1", params![id,url])?;
+    let changed = tx.execute(
+        "UPDATE negocios SET web=?2 WHERE id=?1 AND admisible=1",
+        params![id, url],
+    )?;
     anyhow::ensure!(changed > 0, "Negocio no encontrado o no admisible");
     tx.execute("INSERT INTO web_estado(negocio_id,estado,url_confirmada,origen,confirmado_en) VALUES(?1,'verificada_automatica',?2,'verificacion_automatica',?3) ON CONFLICT(negocio_id) DO UPDATE SET generacion=generacion+CASE WHEN url_confirmada!=excluded.url_confirmada OR url_confirmada IS NULL THEN 1 ELSE 0 END,estado='verificada_automatica',url_confirmada=excluded.url_confirmada,origen='verificacion_automatica',confirmado_en=excluded.confirmado_en,aviso=NULL", params![id,url,store::ahora()])?;
     tx.execute("UPDATE web_candidatas SET estado='confirmada',evidencias=?3 WHERE negocio_id=?1 AND url=?2", params![id,url,evidence.to_string()])?;
@@ -265,14 +359,21 @@ pub fn discard(conn: &Connection, id: i64, candidate: i64) -> Result<bool> {
     )? > 0)
 }
 
-fn save_candidate_verification(conn: &Connection, candidate: &WebCandidata, mut verification: Value) -> Result<()> {
+fn save_candidate_verification(
+    conn: &Connection,
+    candidate: &WebCandidata,
+    mut verification: Value,
+) -> Result<()> {
     let mut evidence = candidate.evidencias.clone();
     if let Some(object) = evidence.as_object_mut() {
         object.insert("verificacion".into(), verification.take());
     } else {
         evidence = json!({"origen":candidate.proveedor,"verificacion":verification});
     }
-    conn.execute("UPDATE web_candidatas SET evidencias=?2 WHERE id=?1", params![candidate.id,evidence.to_string()])?;
+    conn.execute(
+        "UPDATE web_candidatas SET evidencias=?2 WHERE id=?1",
+        params![candidate.id, evidence.to_string()],
+    )?;
     Ok(())
 }
 
@@ -465,7 +566,8 @@ pub async fn discover(store: &Store, id: i64, allow_search: bool) -> Result<Valu
                 reserve_search_credit(&c)?
             };
             if !reserved {
-                notice = Some("Límite gratuito diario o mensual alcanzado; búsqueda pausada.".into());
+                notice =
+                    Some("Límite gratuito diario o mensual alcanzado; búsqueda pausada.".into());
                 json!([])
             } else {
                 searched = true;
@@ -505,9 +607,23 @@ pub async fn discover(store: &Store, id: i64, allow_search: bool) -> Result<Valu
         };
         if let Some(rows) = results.as_array() {
             let c = store.lock().unwrap();
-            for (position, r) in rows.iter().enumerate().filter(|(_, r)| organic_result(r)).take(5) {
+            for (position, r) in rows
+                .iter()
+                .enumerate()
+                .filter(|(_, r)| organic_result(r))
+                .take(5)
+            {
                 if let Some(url) = r["url"].as_str() {
-                    add_candidate(&c,id,url,r["title"].as_str(),"Tavily",Some(&query),Some(position as i64+1),&json!({"tipo_resultado":"organico","identidad_confirmada":false}))?;
+                    add_candidate(
+                        &c,
+                        id,
+                        url,
+                        r["title"].as_str(),
+                        "Tavily",
+                        Some(&query),
+                        Some(position as i64 + 1),
+                        &json!({"tipo_resultado":"organico","identidad_confirmada":false}),
+                    )?;
                 }
             }
         }
@@ -522,7 +638,11 @@ pub async fn discover(store: &Store, id: i64, allow_search: bool) -> Result<Valu
     for candidate in candidates.iter().take(3) {
         {
             let c = store.lock().unwrap();
-            save_candidate_verification(&c, candidate, json!({"revisada_en":store::ahora(),"resultado":"no_disponible"}))?;
+            save_candidate_verification(
+                &c,
+                candidate,
+                json!({"revisada_en":store::ahora(),"resultado":"no_disponible"}),
+            )?;
         }
         if candidate.tipo == "red_social" {
             continue;
@@ -531,26 +651,34 @@ pub async fn discover(store: &Store, id: i64, allow_search: bool) -> Result<Valu
             Ok(true) => {}
             Ok(false) => {
                 let c = store.lock().unwrap();
-                save_candidate_verification(&c, candidate, json!({"revisada_en":store::ahora(),"resultado":"bloqueada_por_robots"}))?;
+                save_candidate_verification(
+                    &c,
+                    candidate,
+                    json!({"revisada_en":store::ahora(),"resultado":"bloqueada_por_robots"}),
+                )?;
                 continue;
             }
             Err(_) => {
                 let c = store.lock().unwrap();
-                save_candidate_verification(&c, candidate, json!({"revisada_en":store::ahora(),"resultado":"no_disponible"}))?;
+                save_candidate_verification(
+                    &c,
+                    candidate,
+                    json!({"revisada_en":store::ahora(),"resultado":"no_disponible"}),
+                )?;
                 continue;
             }
         }
         if let Ok(p) = public_http::fetch(&candidate.url, 12).await {
             if (200..300).contains(&p.status) {
                 let html = scraper::Html::parse_document(&p.body);
-                let name = eligibility::normalize(&html.root_element().text().collect::<String>());
+                let page_text = html.root_element().text().collect::<String>();
+                let name = eligibility::normalize(&page_text);
                 let phone = n
                     .telefono
                     .as_deref()
                     .map(|s| s.chars().filter(|c| c.is_ascii_digit()).collect::<String>())
                     .filter(|s| s.len() >= 8);
-                let body_digits = p
-                    .body
+                let body_digits = page_text
                     .chars()
                     .filter(|c| c.is_ascii_digit())
                     .collect::<String>();
@@ -564,17 +692,38 @@ pub async fn discover(store: &Store, id: i64, allow_search: bool) -> Result<Valu
                 let has_name = eligibility::normalize(&n.nombre).len() > 3
                     && name.contains(&eligibility::normalize(&n.nombre));
                 let structured = structured_identity(&p.body, &n.nombre, &p.url);
-                let is_directory = candidate.tipo == "directorio" || p.body.contains("\"@type\":\"ItemList\"")
+                let is_directory = candidate.tipo == "directorio"
+                    || crate::scoring::es_red_social(&p.url)
+                    || es_directorio(&p.url)
+                    || p.body.contains("\"@type\":\"ItemList\"")
                     || p.body.contains("\"@type\": \"ItemList\"");
                 let c = store.lock().unwrap();
-                let strong = has_name && (has_phone || has_address) && structured && !is_directory;
-                let verification = json!({"revisada_en":store::ahora(),"resultado":if strong{"verificada_automatica"}else if is_directory{"directorio"}else{"sin_pruebas_suficientes"},"nombre_coincide":has_name,"telefono_coincide":has_phone,"direccion_coincide":has_address,"datos_estructurados":structured,"directorio":is_directory,"url_final":p.url});
+                // Nombre + teléfono/dirección visibles ya son dos señales
+                // independientes. El marcado estructurado aporta una
+                // alternativa fiable para webs que no publican contacto.
+                let metodo_fuente = fuente_confirma_vinculo(
+                    &candidate.proveedor,
+                    &candidate.evidencias,
+                    candidate.titulo.as_deref(),
+                    &n.nombre,
+                );
+                let strong = !is_directory
+                    && (identidad_fuerte(
+                        has_name,
+                        has_phone,
+                        has_address,
+                        structured,
+                        is_directory,
+                    ) || metodo_fuente.is_some());
+                let verification = json!({"revisada_en":store::ahora(),"resultado":if strong{"verificada_automatica"}else if is_directory{"directorio"}else{"sin_pruebas_suficientes"},"nombre_coincide":has_name,"telefono_coincide":has_phone,"direccion_coincide":has_address,"datos_estructurados":structured,"directorio":is_directory,"metodo_fuente":metodo_fuente,"url_final":p.url});
                 let mut evidence = candidate.evidencias.clone();
                 evidence["verificacion"] = verification.clone();
                 c.execute("UPDATE web_candidatas SET evidencias=?2,tipo=CASE WHEN ?3 THEN 'directorio' ELSE tipo END WHERE id=?1",params![candidate.id,evidence.to_string(),is_directory])?;
                 if strong {
-                    verified_automatically(&c,id,&candidate.url,&evidence)?;
-                    return Ok(json!({"estado":"verificada_automatica","negocio_id":id,"url":candidate.url,"evidencias":verification}));
+                    verified_automatically(&c, id, &candidate.url, &evidence)?;
+                    return Ok(
+                        json!({"estado":"verificada_automatica","negocio_id":id,"url":candidate.url,"evidencias":verification}),
+                    );
                 }
             }
         }
@@ -597,6 +746,83 @@ pub async fn discover(store: &Store, id: i64, allow_search: bool) -> Result<Valu
     let score = if status == "no_localizada" { 60 } else { 40 };
     c.execute("UPDATE oportunidades_servicio SET score=?2,motivo=?3,fecha=?4 WHERE negocio_id=?1 AND servicio IN ('creacion_web','landing')",params![id,score,"Web no localizada: encaje provisional; confirmar con el negocio.",store::ahora()])?;
     Ok(json!({"estado":status,"candidatas":count,"consulta":query,"aviso":notice}))
+}
+
+fn es_directorio(url: &str) -> bool {
+    let Some(domain) = eligibility::domain(url) else {
+        return true;
+    };
+    [
+        "booking.com",
+        "mapcarta.com",
+        "foursquare.com",
+        "geonames.org",
+        "wikidata.org",
+        "wikipedia.org",
+        "wikivoyage.org",
+        "here.com",
+        "komoot.com",
+        "mapy.com",
+        "mapy.cz",
+        "expedia.com",
+        "tripadvisor.com",
+        "yelp.com",
+        "paginasamarillas.es",
+        "qdq.com",
+        "cylex.es",
+        "infobel.com",
+        "hotels.com",
+    ]
+    .iter()
+    .any(|known| domain == *known || domain.ends_with(&format!(".{known}")))
+}
+
+fn identidad_fuerte(
+    nombre: bool,
+    telefono: bool,
+    direccion: bool,
+    estructurada: bool,
+    directorio: bool,
+) -> bool {
+    nombre && !directorio && (telefono || direccion || estructurada)
+}
+
+fn fuente_confirma_vinculo(
+    proveedor: &str,
+    evidencias: &Value,
+    titulo: Option<&str>,
+    nombre_negocio: &str,
+) -> Option<&'static str> {
+    let fuente = evidencias.get("fuente")?.as_str()?;
+    let fuente_url = reqwest::Url::parse(fuente).ok()?;
+    let dominio = fuente_url.host_str()?.to_ascii_lowercase();
+    let path = fuente_url.path();
+    if proveedor.eq_ignore_ascii_case("OSM")
+        && (dominio == "openstreetmap.org" || dominio == "www.openstreetmap.org")
+        && ["/node/", "/way/", "/relation/"].iter().any(|prefix| {
+            path.strip_prefix(prefix)
+                .is_some_and(|id| !id.is_empty() && id.bytes().all(|b| b.is_ascii_digit()))
+        })
+    {
+        return Some("openstreetmap");
+    }
+    if evidencias.get("registro_oficial").and_then(Value::as_bool) == Some(true)
+        && evidencias
+            .get("registro")
+            .and_then(Value::as_str)
+            .is_some_and(|v| !v.trim().is_empty())
+        && titulo.is_some_and(|t| {
+            let title = eligibility::normalize(t);
+            let name = eligibility::normalize(nombre_negocio);
+            name.len() > 3 && title == name
+        })
+        && (dominio == "navarra.es"
+            || dominio.ends_with(".navarra.es")
+            || dominio == "datosabiertos.navarra.es")
+    {
+        return Some("registro_oficial_navarra");
+    }
+    None
 }
 
 fn structured_identity(html: &str, name: &str, url: &str) -> bool {
@@ -667,6 +893,63 @@ mod tests {
     fn campos_reservados_no_son_urls() {
         assert_eq!(
             field(&json!({"WEB":"No se consiente la publicación"}), "WEB"),
+            None
+        );
+    }
+    #[test]
+    fn verificacion_admite_dos_senales_sin_exigir_json_ld() {
+        assert!(identidad_fuerte(true, true, false, false, false));
+        assert!(identidad_fuerte(true, false, true, false, false));
+        assert!(identidad_fuerte(true, false, false, true, false));
+        assert!(!identidad_fuerte(true, false, false, false, false));
+        assert!(!identidad_fuerte(true, true, false, true, true));
+    }
+    #[test]
+    fn se_excluyen_plataformas_de_reservas_y_directorios() {
+        assert!(es_directorio("https://booking.com/hotel/example"));
+        assert!(es_directorio("https://mapcarta.com/N510997125"));
+        assert!(es_directorio(
+            "https://www.paginasamarillas.es/empresa/example"
+        ));
+        assert!(!es_directorio("https://hotel-example.es/"));
+    }
+    #[test]
+    fn procedencia_verifica_web_osm_y_registro_oficial_con_nombre_exacto() {
+        assert_eq!(
+            fuente_confirma_vinculo(
+                "OSM",
+                &json!({"fuente":"https://www.openstreetmap.org/way/12345"}),
+                None,
+                "Negocio"
+            ),
+            Some("openstreetmap")
+        );
+        let oficial = json!({"fuente":"https://datosabiertos.navarra.es/dataset/registro","registro":"123","registro_oficial":true});
+        assert_eq!(
+            fuente_confirma_vinculo(
+                "Industria",
+                &oficial,
+                Some("Taller El Roble"),
+                "Taller El Roble"
+            ),
+            Some("registro_oficial_navarra")
+        );
+        assert_eq!(
+            fuente_confirma_vinculo(
+                "Industria",
+                &oficial,
+                Some("Taller El Roble Norte"),
+                "Taller El Roble"
+            ),
+            None
+        );
+        assert_eq!(
+            fuente_confirma_vinculo(
+                "OSM",
+                &json!({"fuente":"https://openstreetmap.org/user/123"}),
+                None,
+                "Negocio"
+            ),
             None
         );
     }
@@ -761,6 +1044,42 @@ mod persistence_tests {
             store::get_negocio(&c, 1).unwrap().unwrap().web.as_deref(),
             Some("https://manual.example/")
         );
+    }
+    #[test]
+    fn automatizacion_usa_tavily_aunque_ya_haya_candidata_osm() {
+        let c = db();
+        add_candidate(
+            &c,
+            1,
+            "https://web-osm.example/",
+            None,
+            "OSM",
+            None,
+            None,
+            &json!({"fuente":"https://www.openstreetmap.org/node/123"}),
+        )
+        .unwrap();
+        assert_eq!(next_automatic_discovery(&c).unwrap(), Some((1, true)));
+
+        let day = chrono::Utc::now().format("%Y-%m-%d").to_string();
+        let month = chrono::Utc::now().format("%Y-%m").to_string();
+        c.execute(
+            "INSERT INTO web_search_daily_budget(dia,creditos) VALUES(?1,35)",
+            [&day],
+        )
+        .unwrap();
+        c.execute(
+            "INSERT INTO web_search_budget(periodo,creditos) VALUES(?1,999)",
+            [&month],
+        )
+        .unwrap();
+        assert_eq!(next_automatic_discovery(&c).unwrap(), Some((1, true)));
+        c.execute(
+            "UPDATE web_search_budget SET creditos=1000 WHERE periodo=?1",
+            [&month],
+        )
+        .unwrap();
+        assert_eq!(next_automatic_discovery(&c).unwrap(), Some((1, false)));
     }
     fn technical_generation(c: &Connection) -> i64 {
         c.query_row(

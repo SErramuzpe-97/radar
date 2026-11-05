@@ -50,11 +50,11 @@ async function responsiveAudit(req,env,pages=[]){
  const files={},issues=[],screenshots=[],origin=new URL(req.url).origin;
  const rest=pages.map(p=>p.url||p).filter((u,i,a)=>{try{return a.indexOf(u)===i&&new URL(u).origin===origin}catch{return false}})
   .filter(u=>u!==req.url).sort((a,b)=>Number(/contact|contacto|about|nosotr|servici|menu|carta|reserv|donac|proyecto|socios/i.test(b))-Number(/contact|contacto|about|nosotr|servici|menu|carta|reserv|donac|proyecto|socios/i.test(a)));
- const targets=[req.url,...rest].slice(0,10);
+ const targets=[req.url,...rest].slice(0,3);
  let browser;
  try{
   browser=await puppeteer.launch({executablePath:chromePath,headless:true,env,args:['--disable-dev-shm-usage','--renderer-process-limit=2','--no-first-run','--no-default-browser-check']});
-  const page=await browser.newPage();page.setDefaultNavigationTimeout(20000);
+  const page=await browser.newPage();page.setDefaultNavigationTimeout(10000);
   let expected=targets.length*3;
   for(const [pageIndex,url] of targets.entries()){
    const widths=[390,768,1366];
@@ -63,7 +63,7 @@ async function responsiveAudit(req,env,pages=[]){
     if(timeLeft(req,60000)<5000)break;
     await page.setViewport({width,height:width===1366?768:844,deviceScaleFactor:1,isMobile:width<768,hasTouch:width<768});
     let response=null;
-    try{response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:Math.min(20000,timeLeft(req,20000))});await new Promise(r=>setTimeout(r,350));}
+    try{response=await page.goto(url,{waitUntil:'domcontentloaded',timeout:Math.min(10000,timeLeft(req,10000))});await new Promise(r=>setTimeout(r,250));}
     catch(e){issues.push({code:'responsive-navigation',title:'No se pudo cargar la página a '+width+' px',category:'responsive',severity:'info',confidence:'low',url,details:e.message});continue;}
     const geometry=await page.evaluate(()=>{const root=document.documentElement,client=root.clientWidth,scroll=root.scrollWidth;const nodes=Array.from(document.body?.querySelectorAll('*')||[]).map(el=>{const r=el.getBoundingClientRect(),style=getComputedStyle(el);return {tag:el.tagName.toLowerCase(),id:el.id||null,classes:typeof el.className==='string'?el.className.slice(0,100):'',left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width),position:style.position}}).filter(x=>x.width>0&&x.right>client+2&&x.left>=-2&&x.position!=='fixed'&&x.position!=='absolute').sort((a,b)=>b.right-a.right).slice(0,5);return {client,scroll,overflow:scroll>client+1,nodes}});
     const key='responsive-'+(pageIndex+1)+'-'+width;
@@ -89,7 +89,7 @@ async function lighthousePhase(req,env){
  try {
   chrome=await chromeLauncher.launch({chromePath,envVars:env,chromeFlags:['--headless=new','--disable-dev-shm-usage','--renderer-process-limit=2','--no-first-run','--no-default-browser-check'],logLevel:'silent'});
   const config={extends:'lighthouse:default',settings:{...(req.device==='desktop'?desktopConfig.settings:{}),formFactor:req.device,onlyCategories:['performance','accessibility','best-practices','seo'],screenEmulation:{mobile:req.device==='mobile',width:req.device==='mobile'?390:1366,height:req.device==='mobile'?844:768,deviceScaleFactor:req.device==='mobile'?1.75:1,disabled:false},maxWaitForLoad:30000,maxWaitForFcp:20000}};
-  const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Tiempo de medición Lighthouse agotado (75 s)')),timeLeft(req,75000));});
+  const timeout=new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Tiempo de medición Lighthouse agotado (110 s)')),timeLeft(req,110000));});
   const result=await Promise.race([lighthouse(req.url,{port:chrome.port,output:['json','html'],locale:'es',logLevel:'error'},config),timeout]);
   if(!result?.lhr)throw new Error('Lighthouse no devolvió resultados');
   const normalized=lighthouseResult(result.lhr);const reports=Array.isArray(result.report)?result.report:[JSON.stringify(result.lhr),result.report];
@@ -100,15 +100,15 @@ async function lighthousePhase(req,env){
 async function siteonePhase(req,env){
  const dir=path.join(base,'tmp',req.id);await fs.mkdir(dir,{recursive:true,mode:0o770});
  const args=(json,html,max,rendered)=>[
-  `--url=${req.url}`,`--device=${req.device}`,'--workers=1','--max-reqs-per-sec=1','--memory-limit=256M',`--max-visited-urls=${max}`,'--max-depth=3','--timeout=12',
+  `--url=${req.url}`,`--device=${req.device}`,'--workers=1','--max-reqs-per-sec=1','--memory-limit=256M',`--max-visited-urls=${max}`,'--max-depth=2','--timeout=8',
   `--proxy=${env.RADAR_BROWSER_PROXY.replace('http://','')}`,
   `--output-json-file=${json}`,`--output-html-report=${html}`,'--output-text-file=',
-  ...(rendered?['--browser',`--browser-path=${chromePath}`,'--browser-workers=1','--browser-wait=domcontentloaded','--browser-wait-extra=1000','--browser-timeout=12',`--screenshot-viewport=${req.device==='mobile'?'390x844':'1366x768'}`]:[])
+  ...(rendered?['--browser',`--browser-path=${chromePath}`,'--browser-workers=1','--browser-wait=domcontentloaded','--browser-wait-extra=500','--browser-timeout=8',`--screenshot-viewport=${req.device==='mobile'?'390x844':'1366x768'}`]:[])
  ];
  const jsonPath=path.join(dir,'report.json'),htmlPath=path.join(dir,'report.html');
- const runInfo=await run(siteone,args(jsonPath,htmlPath,100,false),timeLeft(req,120000),env);
+ const runInfo=await run(siteone,args(jsonPath,htmlPath,40,false),timeLeft(req,180000),env);
  let d;try{d=JSON.parse(await fs.readFile(jsonPath,'utf8'));}catch{throw new Error(runInfo.timedOut?'SiteOne alcanzó el límite de tiempo sin poder generar informe':`SiteOne no generó informe (código ${runInfo.code}): ${runInfo.log.slice(-1800)}`);}
- let normalized=siteoneResult(d,req.url,100,false);
+ let normalized=siteoneResult(d,req.url,40,false);
  const files={html:await original(req.id,'html',await fs.readFile(htmlPath))};
  try{const page=await publicFetch(req.url);if(page.status>=200&&page.status<300)normalized.issues.push(...supplementary(page.body,page.url));}catch(e){normalized.warnings.push('Comprobaciones complementarias no disponibles: '+e.message);}
  const needRender=normalized.coverage.html_pages<=1 || normalized.issues.some(i=>['h1-missing','title-missing','pages-without-h1'].includes(i.code));
@@ -116,13 +116,13 @@ async function siteonePhase(req,env){
   // Una página por invocación permite conservar cada comprobación terminada
   // incluso cuando otra URL JS consume el presupuesto restante.
   const priority=url=>/contact|encuentra|about|nosotr|servici|menu/i.test(url)?0:1;
-  const targets=[req.url,...normalized.pages.map(p=>p.url).sort((a,b)=>priority(a)-priority(b))].filter((u,i,a)=>a.indexOf(u)===i&&new URL(u).origin===new URL(req.url).origin).slice(0,5);
-  const renderEnd=Math.min(req.deadline,now()+60);let renderedCount=0;
+  const targets=[req.url,...normalized.pages.map(p=>p.url).sort((a,b)=>priority(a)-priority(b))].filter((u,i,a)=>a.indexOf(u)===i&&new URL(u).origin===new URL(req.url).origin).slice(0,3);
+  const renderEnd=Math.min(req.deadline,now()+30);let renderedCount=0;
   for(const [index,target] of targets.entries()){
    if(renderEnd-now()<5){normalized.coverage.rendered_incomplete=true;break;}
    const renderedJson=path.join(dir,`rendered-${index}.json`),renderedHtml=path.join(dir,`rendered-${index}.html`);
    const renderArgs=args(renderedJson,renderedHtml,1,true).map(a=>a.startsWith('--url=')?`--url=${target}`:a);
-   const render=await run(siteone,renderArgs,Math.max(1000,Math.min(20000,(renderEnd-now())*1000)),env);
+   const render=await run(siteone,renderArgs,Math.max(1000,Math.min(10000,(renderEnd-now())*1000)),env);
    try{
     const rd=JSON.parse(await fs.readFile(renderedJson,'utf8'));const rendered=siteoneResult(rd,target,1,true);
     if(!rendered.coverage.html_pages)throw new Error('Sin HTML renderizado');

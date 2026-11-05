@@ -1,7 +1,7 @@
 use crate::api::{self, AppState};
 use anyhow::{Context, Result};
-use rusqlite::OptionalExtension;
 use radar_core::{audit, model::*, store, technical, web};
+use rusqlite::OptionalExtension;
 use serde_json::{json, Value};
 use std::{
     fs::{self, OpenOptions},
@@ -36,9 +36,12 @@ pub async fn refresh_light(st: &AppState, id: i64) -> Result<()> {
     Ok(())
 }
 static SITE_LOCK: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(1);
+static DISCOVERY_LOCK: tokio::sync::Semaphore = tokio::sync::Semaphore::const_new(1);
 
 pub async fn discovery(st: AppState, mut job: Job) {
-    let _permit = SITE_LOCK.acquire().await.unwrap();
+    // El contraste de una web usa peticiones HTTP ligeras; no debe esperar a
+    // que Lighthouse/SiteOne termine su rastreo pesado del sitio anterior.
+    let _permit = DISCOVERY_LOCK.acquire().await.unwrap();
     job.estado = EstadoJob::EnCurso;
     job.error = None;
     api::actualizar_job(&st, &mut job);
@@ -76,7 +79,10 @@ async fn discovery_inner(st: &AppState, job: &mut Job) -> Result<()> {
     for id in ids {
         let allow_search = job.params["buscar"].as_bool().unwrap_or(true);
         let result = web::discover(&st.store, id, allow_search).await?;
-        if matches!(result["estado"].as_str(), Some("confirmada" | "verificada_automatica")) {
+        if matches!(
+            result["estado"].as_str(),
+            Some("confirmada" | "verificada_automatica")
+        ) {
             confirmed += 1;
             refresh_light(st, id).await?;
             let c = st.store.lock().unwrap();
@@ -106,11 +112,22 @@ pub fn start(st: AppState) {
         tokio::time::sleep(Duration::from_secs(30)).await;
         loop {
             match radar_core::fuentes::navarra::scan(&source_state.store, None).await {
-                Ok(result) => eprintln!("Sincronización automática de registros navarros: {}", result),
-                Err(e) => eprintln!("Falló la sincronización automática de registros navarros: {e:#}"),
+                Ok(result) => eprintln!(
+                    "Sincronización automática de registros navarros: {}",
+                    result
+                ),
+                Err(e) => {
+                    eprintln!("Falló la sincronización automática de registros navarros: {e:#}")
+                }
             }
             let cache = format!("{}.navarra.osm.pbf", source_state.db_path);
-            match radar_core::fuentes::overpass::scan_navarra_resumen(&source_state.store, &cache, None).await {
+            match radar_core::fuentes::overpass::scan_navarra_resumen(
+                &source_state.store,
+                &cache,
+                None,
+            )
+            .await
+            {
                 Ok(result) => eprintln!("Sincronización automática de OpenStreetMap: {result}"),
                 Err(e) => eprintln!("Falló la sincronización automática de OpenStreetMap: {e:#}"),
             }
@@ -119,7 +136,7 @@ pub fn start(st: AppState) {
                 c.query_row("SELECT id FROM fuentes WHERE habilitada=1 AND tipo='semilla' AND revisada_en IS NOT NULL AND condiciones IS NOT NULL AND atribucion IS NOT NULL AND (ultima_ejecucion IS NULL OR datetime(ultima_ejecucion)<datetime('now','-7 days')) ORDER BY COALESCE(ultima_ejecucion,'') LIMIT 1",[],|r|r.get::<_,i64>(0)).optional().ok().flatten()
             };
             if let Some(id) = seed {
-                match radar_core::fuentes::crawler::rastrear_fuente(&source_state.store,id).await {
+                match radar_core::fuentes::crawler::rastrear_fuente(&source_state.store, id).await {
                     Ok(result) => eprintln!("Rastreo automático de fuente {id}: {result}"),
                     Err(e) => eprintln!("Falló el rastreo automático de fuente {id}: {e:#}"),
                 }
@@ -137,24 +154,40 @@ pub fn start(st: AppState) {
             let job = {
                 let c = discovery_state.store.lock().unwrap();
                 let last = store::meta_get(&c, "web_discovery_next")
-                    .ok().flatten().and_then(|v| v.parse::<i64>().ok()).unwrap_or(0);
+                    .ok()
+                    .flatten()
+                    .and_then(|v| v.parse::<i64>().ok())
+                    .unwrap_or(0);
                 if last > chrono::Utc::now().timestamp()
                     || store::tipo_job_activo(&c, TipoJob::Discovery).unwrap_or(true)
-                    || store::tipo_job_activo(&c, TipoJob::Technical).unwrap_or(true)
                 {
                     None
                 } else {
                     match web::next_automatic_discovery(&c) {
-                        Ok(Some((id, buscar))) => match technical::automatic_discovery_job(&c,id,buscar) {
-                            Ok(job) => {
-                                let _ = store::meta_set(&c, "web_discovery_next", &(chrono::Utc::now().timestamp()+60).to_string());
-                                eprintln!("Descubrimiento web automático programado para el negocio {id}; búsqueda externa: {buscar}");
-                                Some(job)
+                        Ok(Some((id, buscar))) => {
+                            match technical::automatic_discovery_job(&c, id, buscar) {
+                                Ok(job) => {
+                                    let _ = store::meta_set(
+                                        &c,
+                                        "web_discovery_next",
+                                        &(chrono::Utc::now().timestamp() + 30).to_string(),
+                                    );
+                                    eprintln!("Descubrimiento web automático programado para el negocio {id}; búsqueda externa: {buscar}");
+                                    Some(job)
+                                }
+                                Err(e) => {
+                                    eprintln!("No se pudo encolar la búsqueda de web: {e:#}");
+                                    None
+                                }
                             }
-                            Err(e) => { eprintln!("No se pudo encolar la búsqueda de web: {e:#}"); None }
-                        },
+                        }
                         Ok(None) => None,
-                        Err(e) => { eprintln!("No se pudo seleccionar el siguiente negocio para descubrir: {e:#}"); None }
+                        Err(e) => {
+                            eprintln!(
+                                "No se pudo seleccionar el siguiente negocio para descubrir: {e:#}"
+                            );
+                            None
+                        }
                     }
                 }
             };
@@ -193,8 +226,8 @@ pub fn start(st: AppState) {
                             .and_then(|v| v.parse::<i64>().ok())
                             .unwrap_or(24)
                             .max(6);
-                        let before = (chrono::Utc::now() - chrono::Duration::hours(hours))
-                            .to_rfc3339();
+                        let before =
+                            (chrono::Utc::now() - chrono::Duration::hours(hours)).to_rfc3339();
                         match technical::enqueue_due(&c, &before) {
                             Ok(Some(job)) => eprintln!(
                                 "Auditoría técnica automática programada para el negocio {}",
@@ -227,7 +260,7 @@ pub fn start(st: AppState) {
                 let pause = std::env::var("RADAR_TECH_PAUSE_SECONDS")
                     .ok()
                     .and_then(|v| v.parse::<i64>().ok())
-                    .unwrap_or(60)
+                    .unwrap_or(15)
                     .max(0);
                 let c = st.store.lock().unwrap();
                 let _ = store::meta_set(
@@ -375,7 +408,7 @@ async fn execute_inner(st: &AppState, job: &mut Job) -> Result<()> {
             // Cada motor y dispositivo recibe su propio presupuesto. Lighthouse
             // suele terminar en segundos; SiteOne puede rastrear páginas lentas
             // y, en móvil, completar además la matriz responsive.
-            let phase_budget = if engine == "siteone" { 480 } else { 180 };
+            let phase_budget = if engine == "siteone" { 240 } else { 120 };
             let deadline = chrono::Utc::now().timestamp() + phase_budget;
             let result = phase(st, job, engine, device, deadline).await?;
             if result["status"] == "error" {
@@ -423,7 +456,9 @@ pub fn sync_pinned_captures(
     }
     let previous_catalog = previous["catalogo"].as_array().cloned().unwrap_or_default();
     for mark in previous["capturas"].as_array().into_iter().flatten() {
-        let Some(capture_id) = mark["capture_id"].as_str() else { continue };
+        let Some(capture_id) = mark["capture_id"].as_str() else {
+            continue;
+        };
         if mark["estado"] != "conservar" || current_kept.contains(capture_id) {
             continue;
         }
@@ -431,21 +466,42 @@ pub fn sync_pinned_captures(
             .iter()
             .find(|capture| capture["capture_id"] == capture_id)
         {
-            let filename = format!("{}.{}.gz.keep", capture["report_id"].as_str().unwrap_or(""), capture["key"].as_str().unwrap_or(""));
+            let filename = format!(
+                "{}.{}.gz.keep",
+                capture["report_id"].as_str().unwrap_or(""),
+                capture["key"].as_str().unwrap_or("")
+            );
             fs::remove_file(pinned.join(filename)).ok();
         }
     }
     let catalog = technical::capture_catalog(conn, negocio_id)?;
     for mark in current["capturas"].as_array().into_iter().flatten() {
-        if mark["estado"] != "conservar" { continue; }
-        let Some(capture_id) = mark["capture_id"].as_str() else { continue };
-        let Some(capture) = catalog.iter().find(|capture| capture["capture_id"] == capture_id) else { continue };
+        if mark["estado"] != "conservar" {
+            continue;
+        }
+        let Some(capture_id) = mark["capture_id"].as_str() else {
+            continue;
+        };
+        let Some(capture) = catalog
+            .iter()
+            .find(|capture| capture["capture_id"] == capture_id)
+        else {
+            continue;
+        };
         let report_id = capture["report_id"].as_str().unwrap_or("");
         let key = capture["key"].as_str().unwrap_or("");
         let filename = format!("{report_id}.{key}.gz");
-        anyhow::ensure!(dir.join(&filename).is_file(), "La captura seleccionada ya no está disponible");
+        anyhow::ensure!(
+            dir.join(&filename).is_file(),
+            "La captura seleccionada ya no está disponible"
+        );
         let marker = pinned.join(format!("{filename}.keep"));
-        let mut file = OpenOptions::new().create(true).truncate(true).write(true).mode(0o660).open(marker)?;
+        let mut file = OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .mode(0o660)
+            .open(marker)?;
         writeln!(file, "business={negocio_id} capture={capture_id}")?;
     }
     Ok(())
