@@ -35,6 +35,7 @@ export function DiagnosticoWeb({ id, web, name }: { id: number; web?: string | n
   const [device, setDevice] = useState<Device>("mobile");
   const [status, setStatus] = useState("Cargando diagnóstico…");
   const [error, setError] = useState("");
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [selection, setSelection] = useState<{ key: string; keys: string[] } | null>(null);
   const [reviews, setReviews] = useState<Record<string, { estado: string; motivo?: string }>>({});
 
@@ -161,10 +162,12 @@ export function DiagnosticoWeb({ id, web, name }: { id: number; web?: string | n
 
   return <section class="diagnostico-web">
     <header class="diagnostico-cabecera">
-      <a class="diagnostico-web-badge" href={web} target="_blank" rel="noreferrer" title="Abrir la web analizada"><span aria-hidden="true">↗</span> {web}</a>
       <h3>Diagnóstico web</h3>
-      <div class="diagnostico-dispositivos" role="tablist" aria-label="Dispositivo del diagnóstico">
-        {DEVICES.map(([value, label]) => <button type="button" key={value} role="tab" aria-selected={device === value} class={device === value ? "activo" : "secundario"} onClick={() => setDevice(value)}>{label}</button>)}
+      <div class="diagnostico-web-toolbar">
+        <a class="diagnostico-web-badge" href={web} target="_blank" rel="noreferrer" title="Abrir la web analizada"><span aria-hidden="true">↗</span> {web}</a>
+        <div class="diagnostico-dispositivos" role="tablist" aria-label="Dispositivo del diagnóstico">
+          {DEVICES.map(([value, label]) => <button type="button" key={value} role="tab" aria-selected={device === value} class={device === value ? "activo" : "secundario"} onClick={() => setDevice(value)}>{label}</button>)}
+        </div>
       </div>
     </header>
     {status && <p class="muted diagnostico-estado">{status}</p>}
@@ -180,8 +183,12 @@ export function DiagnosticoWeb({ id, web, name }: { id: number; web?: string | n
         <button disabled={!findings.length || !selected.length} onClick={() => void exportDossier()}>Descargar selección de hallazgos HTML</button>
         <button class="secundario" disabled={!findings.length || !selected.length} onClick={() => void exportDossier(true)}>Imprimir / guardar PDF</button>
       </div>
-      {findings.length ? Array.from(groups.entries()).map(([category, items]) => <details class="diagnostico-grupo" key={category}>
-        <summary><span>{categoriaEs(category)}</span><span class="muted">({items.length})</span></summary>
+      {findings.length ? Array.from(groups.entries()).map(([category, items]) => <section class="diagnostico-grupo" key={category}>
+        <button type="button" class="diagnostico-grupo-titulo" aria-expanded={Boolean(openGroups[category])} aria-controls={`hallazgos-${id}-${category}`} onClick={() => setOpenGroups(current => ({ ...current, [category]: !current[category] }))}>
+          <span>{categoriaEs(category)}</span><span class="muted">({items.length})</span><span class="diagnostico-grupo-icono" aria-hidden="true" />
+        </button>
+        <div id={`hallazgos-${id}-${category}`} class={`diagnostico-grupo-contenido ${openGroups[category] ? "abierto" : ""}`} aria-hidden={!openGroups[category]} inert={!openGroups[category]}>
+          <div class="diagnostico-grupo-interior">
         {items.slice(0, 30).map((item: any, index: number) => {
           const reviewKey = item._reportId + "|" + issueKey(item);
           const review = reviews[reviewKey] || { estado: "pendiente" };
@@ -209,7 +216,9 @@ export function DiagnosticoWeb({ id, web, name }: { id: number; web?: string | n
             <details class="diagnostico-original"><summary>Ver detalle técnico original</summary><p>{translated.original}</p>{item.details && <p>{item.details}</p>}{item.recommendation && <p>{item.recommendation}</p>}<small>Código: {item.code || "—"}</small></details>
           </article>;
         })}
-      </details>) : <p>No se detectaron incidencias en los resultados disponibles. La cobertura incompleta y los avisos siguen sujetos a revisión.</p>}
+          </div>
+        </div>
+      </section>) : <p>No se detectaron incidencias en los resultados disponibles. La cobertura incompleta y los avisos siguen sujetos a revisión.</p>}
     </>}
   </section>;
 }

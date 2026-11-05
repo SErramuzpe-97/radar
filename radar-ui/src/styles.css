@@ -361,7 +361,7 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .ficha-cabecera h2 { margin:0 0 12px;font-size:1.2rem; }
 .rubro-detalle { display:block;color:var(--muted);margin-top:3px; }
 .ficha-tabs { display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px; }
-.ficha-contenido { flex:1 1 0;min-height:0;min-width:0;width:100%;overflow:auto;overscroll-behavior:contain;padding:0 0 20px; }
+.ficha-contenido { flex:1 1 0;min-height:0;min-width:0;width:100%;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:0 0 20px; }
 .ficha-contenido > :not(.informe-html):not(.auditoria-informe-tab) { margin-left:16px;margin-right:16px; }
 .ficha-contenido.informe-activo { display:flex; flex-direction:column; overflow:hidden; padding:8px 10px 10px; }
 .ficha-etiquetas,.ficha-contactos,.servicios-tags { display:flex;align-items:center;flex-wrap:wrap;gap:8px; }
@@ -372,10 +372,10 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .web-confirmada { display:flex;align-items:flex-start;flex-wrap:wrap;gap:8px; }
 .web-candidata { padding:12px; }
 .diagnostico-web { padding-top:8px; }
-.diagnostico-cabecera { display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap; }
-.diagnostico-cabecera { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center; }
+.diagnostico-cabecera { display:grid;gap:10px; }
 .diagnostico-cabecera h3 { margin:0; }
-.diagnostico-web-badge { grid-column:1/-1;display:inline-flex;align-items:center;gap:7px;width:fit-content;max-width:100%;padding:6px 10px;border:1px solid var(--borde);border-radius:999px;background:var(--panel);color:#304b3a;text-decoration:none;overflow-wrap:anywhere; }
+.diagnostico-web-toolbar { display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0; }
+.diagnostico-web-badge { display:inline-flex;align-items:center;gap:7px;width:fit-content;max-width:100%;min-width:0;padding:6px 10px;border:1px solid var(--borde);border-radius:999px;background:var(--panel);color:#304b3a;text-decoration:none;overflow-wrap:anywhere; }
 .diagnostico-web-badge:hover { background:#e9ece4; }
 .diagnostico-dispositivos { display:flex;gap:6px; }
 .diagnostico-resumen { display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px; }
@@ -390,10 +390,15 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .diagnostico-puntuacion.puntuacion-baja .diagnostico-puntuacion-barra i { background:#bd6a50; }
 .diagnostico-estado { margin:6px 0 10px; }
 .diagnostico-grupo { margin:18px 0; }
-.diagnostico-grupo > summary { display:flex;align-items:center;gap:6px;min-height:44px;padding:8px 4px;border-bottom:1px solid var(--borde);cursor:pointer;list-style:none;font-weight:700; }
-.diagnostico-grupo > summary::-webkit-details-marker { display:none; }
-.diagnostico-grupo > summary::after { content:"⌄";margin-left:auto;color:var(--muted); }
-.diagnostico-grupo[open] > summary::after { content:"⌃"; }
+.diagnostico-grupo-titulo { display:flex;align-items:center;gap:6px;width:100%;min-height:44px;padding:8px 4px;border:0;border-bottom:1px solid var(--borde);border-radius:0;background:transparent;color:var(--texto);text-align:left;font:inherit;font-weight:700;cursor:pointer; }
+.diagnostico-grupo-titulo:hover { background:#e9ece4; }
+.diagnostico-grupo-icono { margin-left:auto;color:var(--muted);transition:transform .24s ease; }
+.diagnostico-grupo-icono::before { content:"⌄"; }
+.diagnostico-grupo-titulo[aria-expanded="true"] .diagnostico-grupo-icono { transform:rotate(180deg); }
+.diagnostico-grupo-contenido { display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .24s ease,opacity .2s ease; }
+.diagnostico-grupo-contenido.abierto { grid-template-rows:1fr;opacity:1; }
+.diagnostico-grupo-interior { min-height:0;overflow:hidden;padding-top:0;transition:padding-top .24s ease; }
+.diagnostico-grupo-contenido.abierto .diagnostico-grupo-interior { padding-top:8px; }
 .diagnostico-hallazgo { border:1px solid var(--borde);border-radius:8px;padding:12px;margin:8px 0; }
 .diagnostico-hallazgo > div { display:flex;align-items:center;justify-content:space-between;gap:8px; }
 .diagnostico-hallazgo > p { margin:8px 0; }
