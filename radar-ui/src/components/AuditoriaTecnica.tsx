@@ -13,6 +13,10 @@ const motores:[Engine,string][]=[['lighthouse','Lighthouse'],['siteone','SiteOne
 const dispositivos=[['mobile','Móvil'],['desktop','Escritorio']] as const;
 const etiquetas:Record<string,string>={realizada:'Realizada',en_curso:'En curso',pendiente:'Pendiente',no_lanzada:'No lanzada',error:'Error',no_disponible:'No disponible'};
 
+function SelectorDispositivo({device,onChange}:{device:Device;onChange:(device:Device)=>void}){
+ return <div class="auditoria-dispositivos" role="tablist" aria-label="Dispositivo auditado">{dispositivos.map(([value,label])=><button type="button" key={value} role="tab" aria-selected={device===value} class={device===value?'':'secundario'} onClick={()=>onChange(value)}>{label}</button>)}</div>;
+}
+
 function EstadoFase({motor,device,data,url}:{motor:Engine;device:string;data:Estado|null;url:string|null|undefined}){
  const reports=(data?.informes??[]).filter(r=>r.motor===motor&&r.dispositivo===device&&(!url||r.url===url)).sort((a,b)=>b.fecha.localeCompare(a.fecha));
  const r=reports[0];let status='no_lanzada';
@@ -27,7 +31,7 @@ function EstadoFase({motor,device,data,url}:{motor:Engine;device:string;data:Est
  </span>;
 }
 
-function InformeEspanol({report}:{report:Report}){
+function InformeEspanol({report,device,onDeviceChange}:{report:Report;device:Device;onDeviceChange:(device:Device)=>void}){
  const result=report.resultado as any;
  const scores=Object.entries(result?.scores??{}) as [string,unknown][];
  const metrics=(result?.metrics??[]) as any[];
@@ -38,7 +42,7 @@ function InformeEspanol({report}:{report:Report}){
   <header class="informe-espanol-cabecera">
    <div><span class="informe-eyebrow">{report.motor==='lighthouse'?'Lighthouse':'SiteOne'} · {report.dispositivo==='mobile'?'Móvil':'Escritorio'}</span><h3>Resultados de la revisión</h3>
     <p>{estadoAuditoriaEs(report.estado)} · {new Date(report.fecha).toLocaleString('es-ES')} · versión {report.version||'—'}</p></div>
-   <div class="informe-espanol-acciones"><span class={`badge estado-audit estado-audit-${report.estado}`}>{estadoAuditoriaEs(report.estado)}</span><a class="informe-original-enlace" href={`/api/auditorias-tecnicas/${encodeURIComponent(report.id)}/archivo/html/preview`} target="_blank" rel="noopener noreferrer">Ver informe original</a></div>
+   <div class="informe-espanol-acciones"><SelectorDispositivo device={device} onChange={onDeviceChange}/><span class={`badge estado-audit estado-audit-${report.estado}`}>{estadoAuditoriaEs(report.estado)}</span><a class="informe-original-enlace" href={`/api/auditorias-tecnicas/${encodeURIComponent(report.id)}/archivo/html/preview`} target="_blank" rel="noopener noreferrer">Ver informe original</a></div>
   </header>
   {scores.length>0&&<section class="informe-metricas" aria-label="Puntuaciones">
    {scores.map(([key,value])=>{const numeric=typeof value==='number'?value:null;const normalized=numeric===null?0:scale===10?numeric*10:numeric;const quality=normalized>=80?'buena':normalized>=50?'media':'baja';return <article class={`informe-puntuacion puntuacion-${quality}`} key={key}>
@@ -86,7 +90,7 @@ export function AuditoriaTecnica({id,web,mode,onAvailabilityChange,deviceByEngin
  const enCurso=['pendiente','en_curso'].includes(data?.job?.estado??'');
  if(mode===null)return null;
  if(mode!=='summary')return <section class="auditoria-informe-tab">
-  {activeReport?<InformeEspanol key={activeReport.id} report={activeReport}/>:<div class="informe-cargando muted">Todavía no hay un informe HTML para este dispositivo.</div>}
+  {activeReport?<InformeEspanol key={activeReport.id} report={activeReport} device={device as Device} onDeviceChange={next=>selectedEngine&&setDevice(selectedEngine,next)}/>:<div class="informe-sin-resultados"><SelectorDispositivo device={device as Device} onChange={next=>selectedEngine&&setDevice(selectedEngine,next)}/><div class="informe-cargando muted">Todavía no hay un informe HTML para este dispositivo.</div></div>}
  </section>;
  return <section class="auditoria-tecnica">
   <div class="auditoria-estados" aria-label="Estado de auditorías">{motores.flatMap(([m])=>dispositivos.map(([d])=><EstadoFase key={`${m}-${d}`} motor={m} device={d} data={data} url={web}/>))}</div>

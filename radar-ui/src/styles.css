@@ -531,6 +531,9 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .informe-espanol { flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:4px 2px 28px; }
 .informe-espanol-cabecera { display:flex;align-items:center;justify-content:space-between;gap:14px;margin:4px 0 18px; }
 .informe-espanol-acciones { display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px; }
+.informe-espanol-acciones .auditoria-dispositivos { flex:0 0 auto;flex-wrap:nowrap;gap:6px;margin:0; }
+.informe-sin-resultados .auditoria-dispositivos { margin:0 0 10px; }
+.informe-espanol-cabecera > div:first-child { min-width:0;flex:1 1 auto; }
 .informe-original-enlace { display:inline-flex;align-items:center;min-height:38px;padding:6px 10px;border:1px solid var(--borde);border-radius:7px;background:var(--panel);color:#304b3a;text-decoration:none;font-weight:600;white-space:nowrap; }
 .informe-espanol-cabecera h3 { margin:3px 0;font-size:1.35rem; }
 .informe-espanol-cabecera p { margin:4px 0;color:var(--muted);font-size:.9rem; }
@@ -661,6 +664,10 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
   .informe-aparte-main { padding-right:16px;padding-left:16px; }
   .informe-aparte-cabecera { align-items:flex-start;flex-direction:column;gap:8px; }
   .informe-aparte-cabecera .auditoria-dispositivos { margin:0; }
+}
+@media(max-width:700px) {
+  .informe-espanol-cabecera { align-items:flex-start;flex-direction:column; }
+  .informe-espanol-acciones { justify-content:flex-start; }
 }
 
 @keyframes radar-vista-entra { from { opacity:0;transform:translateY(5px); } to { opacity:1;transform:translateY(0); } }
