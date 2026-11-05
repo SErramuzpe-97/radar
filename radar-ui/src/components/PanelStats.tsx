@@ -21,6 +21,7 @@ const NOMBRES: Record<string, string> = {
   cerrado: "Cerrado",
 };
 
+
 function Distribucion({ titulo, datos }: { titulo: string; datos: { etiqueta: string; total: number }[] }) {
   const maximo = Math.max(1, ...datos.map((dato) => dato.total));
   return (
@@ -57,10 +58,11 @@ export function PanelStats() {
             <article class="kpi-total"><span class="muted">Eventos en los últimos 7 días</span><strong>{datos.eventos_ultimos_7_dias}</strong></article>
           </div>
           <div class="kpi-grid">
-            <Distribucion titulo="Embudo del pipeline" datos={datos.por_pipeline} />
+            <Distribucion titulo="Estados de seguimiento" datos={datos.por_pipeline} />
             <Distribucion titulo="Estado de la web" datos={datos.por_estado_web} />
             <Distribucion titulo="Prioridad comercial" datos={datos.por_prioridad} />
           </div>
+
         </>
       )}
     </section>

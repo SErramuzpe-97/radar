@@ -12,8 +12,21 @@ pub fn export_csv(conn: &Connection, f: &FiltrosNegocios, out: &mut dyn Write) -
     let pagina = store::list_negocios(conn, f)?;
     let mut wtr = csv::Writer::from_writer(out);
     wtr.write_record([
-        "id", "nombre", "sector", "municipio", "direccion", "telefono", "email", "web", "lat", "lon",
-        "prioridad", "score", "estado_web", "fuente",
+        "id",
+        "nombre",
+        "sector",
+        "rubro",
+        "municipio",
+        "direccion",
+        "telefono",
+        "email",
+        "web",
+        "lat",
+        "lon",
+        "prioridad",
+        "score",
+        "estado_web",
+        "fuente",
     ])?;
     for n in &pagina.items {
         let (estado_web, score, prioridad) = ultima_auditoria(conn, n.id);
@@ -21,6 +34,7 @@ pub fn export_csv(conn: &Connection, f: &FiltrosNegocios, out: &mut dyn Write) -
             n.id.to_string(),
             n.nombre.clone(),
             n.sector.clone().unwrap_or_default(),
+            n.rubro.clone().unwrap_or_default(),
             n.municipio.clone(),
             n.direccion.clone().unwrap_or_default(),
             n.telefono.clone().unwrap_or_default(),
@@ -49,7 +63,7 @@ pub fn export_geojson(conn: &Connection, f: &FiltrosNegocios) -> Result<String> 
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": [lon, lat]},
             "properties": {
-                "id": n.id, "nombre": n.nombre, "sector": n.sector, "municipio": n.municipio,
+                "id": n.id, "nombre": n.nombre, "sector": n.sector, "rubro":n.rubro, "evidencia_rubro":n.evidencia_rubro, "municipio": n.municipio,
                 "direccion": n.direccion, "telefono": n.telefono, "email": n.email, "web": n.web,
                 "estado_web": estado_web, "score": score, "prioridad": prioridad, "fuente": n.fuente,
             }
@@ -66,7 +80,9 @@ pub fn export_gpx(conn: &Connection, f: &FiltrosNegocios) -> Result<String> {
     let pagina = store::list_negocios(conn, f)?;
     let mut wpts = String::new();
     for n in &pagina.items {
-        let (Some(lat), Some(lon)) = (n.lat, n.lon) else { continue };
+        let (Some(lat), Some(lon)) = (n.lat, n.lon) else {
+            continue;
+        };
         let (_, score, prioridad) = ultima_auditoria(conn, n.id);
         wpts.push_str(&format!(
             "  <wpt lat=\"{lat}\" lon=\"{lon}\"><name>{}</name><desc>prioridad {} · score {} · {}</desc></wpt>\n",
@@ -94,5 +110,8 @@ fn ultima_auditoria(conn: &Connection, negocio_id: i64) -> (Option<String>, Opti
 }
 
 fn xml_escape(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }

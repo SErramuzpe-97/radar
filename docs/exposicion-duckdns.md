@@ -89,11 +89,11 @@ certificado TLS automáticamente cuando el DNS y los puertos son accesibles.
 
 ## 5. Instalar Radar como servicio
 
-Compila el binario en un entorno con Rust, Node.js y npm. El build de Rust compila la UI y la
-incluye en el ejecutable:
+Compila la UI y después el binario en un entorno con Rust, Node.js y npm. El frontend se
+construye explícitamente antes de incrustarlo en el ejecutable:
 
 ```bash
-cargo build --release -p radar-cli
+./scripts/build-release.sh
 ```
 
 Crea un usuario de sistema y copia el binario:

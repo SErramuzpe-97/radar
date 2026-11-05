@@ -1,0 +1,15 @@
+[Unit]
+Description=Daily SQLite backup for Radar Navarra
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=radar
+Group=radar
+WorkingDirectory=/var/lib/radar
+ExecStart=/usr/local/bin/radar --db /var/lib/radar/radar.db backup
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/radar

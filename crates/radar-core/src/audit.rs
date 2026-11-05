@@ -1,8 +1,5 @@
 //! Auditoría web ligera: 1 GET por web, timeout 8 s, UA identificable (diseño §6.2).
 
-use std::time::{Duration, Instant};
-
-use chrono::Datelike;
 use serde_json::{json, Value};
 
 use crate::model::{EstadoWeb, Negocio};
@@ -14,8 +11,6 @@ pub struct ResultadoAuditoria {
     pub prioridad: String,
     pub senales: Value,
 }
-
-const UA: &str = "RadarNavarra/0.1 (+auditoria web B2B local; 1 GET por web)";
 
 fn merge(base: &Value, extra: Value) -> Value {
     let mut m = base.clone();
@@ -40,62 +35,72 @@ pub async fn auditar_negocio(neg: &Negocio) -> ResultadoAuditoria {
         // SIN_WEB es hipótesis a verificar in situ (diseño §5, regla de oro)
         let senales = merge(&base, json!({"hipotesis_sin_web": true}));
         let (score, prioridad) = puntuar(EstadoWeb::SinWeb, &senales, neg);
-        return ResultadoAuditoria { estado_web: EstadoWeb::SinWeb, score, prioridad, senales };
+        return ResultadoAuditoria {
+            estado_web: EstadoWeb::SinWeb,
+            score,
+            prioridad,
+            senales,
+        };
     };
 
     if scoring::es_red_social(&web) {
         let senales = merge(&base, json!({"red_social": web}));
         let (score, prioridad) = puntuar(EstadoWeb::SoloRedes, &senales, neg);
-        return ResultadoAuditoria { estado_web: EstadoWeb::SoloRedes, score, prioridad, senales };
+        return ResultadoAuditoria {
+            estado_web: EstadoWeb::SoloRedes,
+            score,
+            prioridad,
+            senales,
+        };
     }
 
-    let client = match reqwest::Client::builder()
-        .timeout(Duration::from_secs(8))
-        .redirect(reqwest::redirect::Policy::limited(5))
-        .user_agent(UA)
-        .build()
-    {
-        Ok(c) => c,
+    let page = match crate::public_http::fetch(&web, 8).await {
+        Ok(p) => p,
         Err(e) => {
-            let senales = merge(&base, json!({"error": e.to_string()}));
-            let (score, prioridad) = puntuar(EstadoWeb::WebRota, &senales, neg);
-            return ResultadoAuditoria { estado_web: EstadoWeb::WebRota, score, prioridad, senales };
+            let senales = merge(&base, json!({"error_temporal":true,"error":e.to_string()}));
+            let (score, prioridad) = puntuar(EstadoWeb::NoVerificable, &senales, neg);
+            return ResultadoAuditoria {
+                estado_web: EstadoWeb::NoVerificable,
+                score,
+                prioridad,
+                senales,
+            };
         }
     };
-
-    let inicio = Instant::now();
-    let resp = client.get(&web).send().await;
-    let elapsed_ms = inicio.elapsed().as_millis() as i64;
-
-    let (status, url_final, body) = match resp {
-        Err(e) => {
-            let senales = merge(&base, json!({"error": e.to_string(), "elapsed_ms": elapsed_ms}));
-            let (score, prioridad) = puntuar(EstadoWeb::WebRota, &senales, neg);
-            return ResultadoAuditoria { estado_web: EstadoWeb::WebRota, score, prioridad, senales };
-        }
-        Ok(r) => {
-            let status = r.status().as_u16();
-            let url_final = r.url().to_string();
-            let body = r.text().await.unwrap_or_default();
-            (status, url_final, body)
-        }
-    };
-
+    let (status, url_final, body, elapsed_ms) =
+        (page.status, page.url, page.body, page.elapsed_ms as i64);
     let body_short: String = body.chars().take(200_000).collect();
     let lower = body_short.to_lowercase();
     let https_nativo = url_final.starts_with("https://");
     let viewport = scoring::tiene_viewport(&body_short);
     let gen = scoring::generator(&body_short);
     let anio_copy = scoring::anio_copyright(&body_short);
-    let ahora_anio = chrono::Local::now().year() as i64;
-    let copyright_viejo = anio_copy.map(|a| a <= ahora_anio - 3).unwrap_or(false);
+    let copyright_viejo = false; // Un año no demuestra abandono.
     let parking = scoring::es_parking(&body_short, &url_final);
     let redir_red = scoring::redirige_a_red(&url_final);
     let email_vis = scoring::email_visible(&body_short);
     let titulo = regex::Regex::new(r"(?is)<title[^>]*>(.*?)</title>")
         .ok()
-        .and_then(|re| re.captures(&body_short).and_then(|c| c.get(1)).map(|m| m.as_str().trim().to_string()));
-    let sin_meta_desc = !lower.contains("name=\"description\"") && !lower.contains("name='description'");
+        .and_then(|re| {
+            re.captures(&body_short)
+                .and_then(|c| c.get(1))
+                .map(|m| m.as_str().trim().to_string())
+        });
+    let sin_meta_desc =
+        !lower.contains("name=\"description\"") && !lower.contains("name='description'");
+    let sin_title = titulo.as_deref().map(|t| t.is_empty()).unwrap_or(true);
+    let sin_h1 = !lower.contains("<h1");
+    let tiene_cta = [
+        "contacto",
+        "reservar",
+        "reserva",
+        "presupuesto",
+        "pedir cita",
+        "llamar",
+        "comprar",
+    ]
+    .iter()
+    .any(|t| lower.contains(t));
     let html_bytes = body.len();
 
     let senales = merge(
@@ -107,13 +112,16 @@ pub async fn auditar_negocio(neg: &Negocio) -> ResultadoAuditoria {
             "sin_https": !https_nativo,
             "sin_viewport": !viewport,
             "generator": gen,
-            "constructor_abandonado": scoring::constructor_abandonado(&gen),
+            "constructor_abandonado": false,
             "copyright_anio": anio_copy,
             "copyright_viejo": copyright_viejo,
             "parking": parking,
             "redirige_a_red": redir_red,
             "email_visible": email_vis,
             "sin_meta_description": sin_meta_desc,
+            "sin_title": sin_title,
+            "sin_h1": sin_h1,
+            "tiene_cta": tiene_cta,
             "html_bytes": html_bytes,
             "titulo": titulo,
             "elapsed_ms": elapsed_ms,
@@ -121,9 +129,24 @@ pub async fn auditar_negocio(neg: &Negocio) -> ResultadoAuditoria {
         }),
     );
 
-    let estado = clasificar(status, &url_final, &body_short, https_nativo, viewport, copyright_viejo, &gen, html_bytes, elapsed_ms);
+    let estado = clasificar(
+        status,
+        &url_final,
+        &body_short,
+        https_nativo,
+        viewport,
+        copyright_viejo,
+        &gen,
+        html_bytes,
+        elapsed_ms,
+    );
     let (score, prioridad) = puntuar(estado, &senales, neg);
-    ResultadoAuditoria { estado_web: estado, score, prioridad, senales }
+    ResultadoAuditoria {
+        estado_web: estado,
+        score,
+        prioridad,
+        senales,
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -133,11 +156,14 @@ fn clasificar(
     html: &str,
     https_nativo: bool,
     viewport: bool,
-    copyright_viejo: bool,
-    gen: &Option<String>,
-    html_bytes: usize,
+    _copyright_viejo: bool,
+    _gen: &Option<String>,
+    _html_bytes: usize,
     elapsed_ms: i64,
 ) -> EstadoWeb {
+    if status == 403 || status == 429 || status >= 500 {
+        return EstadoWeb::NoVerificable;
+    }
     if status >= 400 {
         return EstadoWeb::WebRota;
     }
@@ -147,8 +173,7 @@ fn clasificar(
     if scoring::es_parking(html, url_final) {
         return EstadoWeb::WebAparcada;
     }
-    let obsoleta =
-        !https_nativo || !viewport || copyright_viejo || scoring::constructor_abandonado(gen) || html_bytes < 2000;
+    let obsoleta = !https_nativo || !viewport;
     if obsoleta {
         return EstadoWeb::WebObsoleta;
     }
@@ -159,10 +184,23 @@ fn clasificar(
     EstadoWeb::WebOk
 }
 
-/// Audita una lista de negocios con concurrencia limitada (16).
+/// Audita una lista de negocios con concurrencia limitada (8).
 /// Devuelve (negocio_id, resultado) para que el llamador persista en SQLite.
 pub async fn auditar_lote(
     negocios: Vec<Negocio>,
+    progreso: impl Fn(i64, i64) + Send + Sync + 'static,
+) -> Vec<(i64, ResultadoAuditoria)> {
+    let limite = std::env::var("RADAR_AUDIT_CONCURRENCY")
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .unwrap_or(8)
+        .clamp(1, 32);
+    auditar_lote_con_limite(negocios, limite, progreso).await
+}
+
+pub async fn auditar_lote_con_limite(
+    negocios: Vec<Negocio>,
+    limite: usize,
     progreso: impl Fn(i64, i64) + Send + Sync + 'static,
 ) -> Vec<(i64, ResultadoAuditoria)> {
     let total = negocios.len() as i64;
@@ -177,7 +215,7 @@ pub async fn auditar_lote(
             let r = auditar_negocio(&neg).await;
             (id, r, p)
         });
-        while set.len() >= 16 {
+        while set.len() >= limite.max(1) {
             if let Some(res) = set.join_next().await {
                 if let Ok((id, r, p)) = res {
                     hechos += 1;
@@ -195,4 +233,45 @@ pub async fn auditar_lote(
         }
     }
     out
+}
+
+#[cfg(test)]
+mod reliability_tests {
+    use super::*;
+    #[test]
+    fn constructor_y_copyright_no_demuestran_abandono() {
+        assert_eq!(
+            clasificar(
+                200,
+                "https://example.com",
+                "<meta name=\"description\">",
+                true,
+                true,
+                true,
+                &Some("wix".into()),
+                100,
+                100
+            ),
+            EstadoWeb::WebOk
+        );
+    }
+    #[test]
+    fn fallos_temporales_no_demuestran_web_rota() {
+        for code in [403, 429, 500, 503] {
+            assert_eq!(
+                clasificar(
+                    code,
+                    "https://example.com",
+                    "",
+                    true,
+                    true,
+                    false,
+                    &None,
+                    0,
+                    100
+                ),
+                EstadoWeb::NoVerificable
+            );
+        }
+    }
 }

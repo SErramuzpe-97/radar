@@ -1,0 +1,7 @@
+#!/bin/sh
+set -eu
+chrome_real="${RADAR_CHROME_REAL:-/opt/radar-audit/chrome/chrome-linux64/chrome}"
+if [ -n "${RADAR_BROWSER_PROXY:-}" ]; then
+  exec "$chrome_real" --disable-dev-shm-usage --renderer-process-limit=2 "$@" "--proxy-server=$RADAR_BROWSER_PROXY" '--proxy-bypass-list=<-loopback>' '--disable-quic' '--force-webrtc-ip-handling-policy=disable_non_proxied_udp'
+fi
+exec "$chrome_real" --disable-dev-shm-usage --renderer-process-limit=2 "$@"

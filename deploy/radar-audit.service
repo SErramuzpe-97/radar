@@ -1,0 +1,33 @@
+[Unit]
+Description=Radar Lighthouse 13.6.0 and SiteOne 2.5.1 worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=radar-audit
+Group=radar-audit
+WorkingDirectory=/opt/radar-audit
+Environment=RADAR_AUDIT_DIR=/var/lib/radar-audits
+Environment=NODE_OPTIONS=--max-old-space-size=320
+ExecStart=/usr/bin/node --expose-gc /opt/radar-audit/worker.mjs
+Restart=on-failure
+RestartSec=5
+UMask=0007
+MemoryHigh=850M
+MemoryMax=1G
+MemorySwapMax=0
+TasksMax=160
+Nice=10
+CPUQuota=100%
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/radar-audits
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+IPAddressDeny=10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 100.64.0.0/10 0.0.0.0/8 224.0.0.0/4 ::1/128 fc00::/7 fe80::/10 ff00::/8
+# Loopback IPv4 is required for Chromium's controller and the filtering public proxy.
+
+[Install]
+WantedBy=multi-user.target

@@ -1,7 +1,7 @@
 # Radar Navarra — Diseño del sistema de prospección web local
 
-**Estado:** documento de diseño (fase de deliberación, nada construido) · **Fecha:** 04/11/2026
-**Stack decidido:** Rust + Preact · **Presupuesto fuentes:** 0 € (solo libres) · **Ámbito:** Navarra (núcleo Pamplona/comarca)
+**Estado:** diseño de referencia para el producto implementado · **Fecha:** 04/11/2026
+**Stack:** Rust + Preact · **Presupuesto fuentes:** 0 € (solo libres) · **Ámbito:** toda la Comunidad Foral de Navarra
 
 ---
 
@@ -9,12 +9,12 @@
 
 **Radar** es un programa local (un único binario Rust con dashboard web en Preact) que genera y gestiona la lista de negocios navarros a los que ofrecer servicios web. Hace cuatro cosas que Google Maps a mano no hace:
 
-1. **Descubre** candidatos a escala Navarra por municipio y sector, desde fuentes libres (OpenStreetMap, BORME/BOE, open data).
+1. **Descubre** candidatos a escala Navarra y por sector, desde fuentes libres (OpenStreetMap, BORME/BOE, open data).
 2. **Audita** su presencia web de forma automatizada (¿existe?, ¿funciona?, ¿es obsoleta?) y los clasifica en las tres ofertas comerciales: **crear / rehacer / actualizar**.
 3. **Puntúa y prioriza** cada negocio (0–100) y lo sitúa en un mapa para planificar rutas de visita presenciales.
 4. **Hace de mini-CRM**: estados del pipeline, registro de visitas y seguimiento, todo en SQLite local.
 
-El documento cubre también el modelo de negocio, el canal Kit Digital / agentes digitalizadores, la legalidad y el roadmap. **Nada se construye hasta validar la Fase 0 (pitch presencial a mano) y aprobar este diseño.**
+El documento cubre también el modelo de negocio, el canal Kit Digital / agentes digitalizadores, la legalidad y el roadmap. Para las mejoras priorizadas, consultar [plan-mejoras.md](plan-mejoras.md).
 
 ---
 
@@ -75,7 +75,7 @@ Cada negocio pasa por: descubrir → enriquecer → auditar → puntuar → visi
 
 | Fuente | Qué da | Uso en el pipeline | Límite |
 |---|---|---|---|
-| **OpenStreetMap / Overpass API** | Negocios con nombre, categoría, dirección, teléfono, email, web, coordenadas, horario; filtrable por municipio (admin_level 8) y sector | Descubrir + enriquecer + mapa | El tag `website` es incompleto: "sin web en OSM" = **hipótesis a verificar en visita**, no hecho |
+| **OpenStreetMap / Overpass API** | Negocios con nombre, categoría, dirección, teléfono, email, web, coordenadas, horario; filtrable por área regional y sector | Descubrir + enriquecer + mapa | El tag `website` es incompleto: "sin web en OSM" = **hipótesis a verificar en visita**, no hecho |
 | **BORME (BOE, gratis)** | Constituciones diarias de sociedades en Navarra; también vía OpenMercantil (dataset/API CC BY 4.0) | **Lead caliente**: negocio nuevo = casi seguro sin web — detalle en §5.1 | Solo sociedades; autónomos no aparecen (§5.1) |
 | **BON / boletines forales** | Convocatorias, licencias, anuncios institucionales | Complemento de vigilancia | Poco estructurado |
 | **Open data ayuntamientos** | Licencias de actividad donde estén publicadas (Pamplona open data) | Vigilancia de aperturas | Disponibilidad desigual |
@@ -199,8 +199,8 @@ radar api-spec > api/openapi.yaml                       # regenera el contrato O
 
 ### 8.4 Dashboard Preact (vistas)
 
-1. **Mapa** (Leaflet + teselas libres con atribución): pines por prioridad (rojo A, ámbar B, gris C), clic → ficha. Zero-cost: teselas OSM con atribución u OpenFreeMap (vector, sin key).
-2. **Tabla priorizada**: filtros por sector, municipio, estado web, pipeline; ordenable por score.
+1. **Mapa** (Leaflet + teselas libres con atribución): pines con fondo por potencial (verde A, ámbar B, gris C), clic → ficha. Zero-cost: teselas OSM con atribución u OpenFreeMap (vector, sin key).
+2. **Tabla priorizada**: filtros por sector, municipio y estado web; filas con scroll propio y encabezados/filtros visibles. Ficha con scroll independiente; oportunidades como badges informativos y Seguimiento limitado a estado y actividades.
 3. **Ficha de negocio**: señales de la auditoría, historial, acciones rápidas ("planificar visita", "registrar llamada").
 4. **Ruta del día**: selección manual de negocios → exportación GPX/enlace a Maps.
 5. **Panel**: embudo del pipeline, distribución por estado, actividades de la semana.
@@ -211,7 +211,7 @@ radar api-spec > api/openapi.yaml                       # regenera el contrato O
 
 ### 8.5 Modelo de datos (SQLite `radar.db`)
 
-- **negocios**: id, nombre, categoría, sector, dirección, municipio, lat/lon, teléfono, email, web, fuente, fuente_id, primera_vista, última_verificación
+- **negocios**: id, nombre, categoría original, sector general, rubro normalizado, evidencias del rubro (JSON), dirección, municipio, lat/lon, teléfono, email, web, fuente, fuente_id, primera_vista, última_verificación
 - **auditorias**: id, negocio_id, fecha, estado_web, score, señales (JSON)
 - **pipeline**: negocio_id, estado (nuevo / contactado / visita_hecha / interesado / no_interesado / propuesta / cerrado), valor_estimado, siguiente_acción, fecha
 - **eventos**: id, negocio_id, fecha, tipo (visita/llamada/email/reunión/oferta), resultado, notas
@@ -389,3 +389,12 @@ La asignación es única por tarea (persona o agente). Reglas completas en `task
 - Kit Digital y agentes digitalizadores — [Factorydea](https://factorydea.es/actualizacion-kit-digital/), [BierzoSEO](https://bierzoseo.com/agente-digitalizador/), [Acelera Pyme AECIM](https://acelerapyme-aecim.com/ayuda-digitalizacion/kit-digital-2026-ayudas-para-la-digitalizacion-de-pymes-y-autonomos-orden-tdf-39-2026-modificacion-de-bases-reguladoras/), [FusionStartups](https://fusionstartups.com/blog/kit-digital-autonomos), [Millennials Consulting](https://millennialsconsulting.es/como-ser-agente-digitalizador-autorizado/), [Fandit](https://blog.fandit.es/agente-digitalizador-kit-digital-con-fandit/), [Red.es](https://www.red.es/es/area-prensa/notas-prensa/los-agentes-digitalizadores-ya-pueden-adherirse-al-programa-kit-digital)
 - Negocios nuevos en Navarra — [Boletín Claro](https://boletinclaro.es/blog/que-es-borme-registro-mercantil), [OpenMercantil](https://openmercantil.es/empresas/navarra), [Cámara de Comercio de Navarra](https://camaranavarra.com/2024/02/16/la-camara-de-comercio-de-navarra-apoya-en-la-creacion-de-64-empresas-en-2023/), [Legalcor](https://legalcor.es/como-saber-si-alguien-esta-dado-de-alta-como-autonomo/)
 - OpenStreetMap: Overpass API y licencia ODbL — documentación oficial del proyecto
+
+
+## Actualización: calidad y reconstrucción
+
+La admisión por evidencias, la reconstrucción y los cambios de pantalla se describen en [calidad-y-reconstruccion.md](calidad-y-reconstruccion.md). Los servicios en la ficha son informativos; sus antiguos controles y métricas de resolución ya no forman parte de la interfaz. El proceso usa identidades y dimensiones documentadas de las organizaciones, sin reglas que enumeren marcas.
+
+## Auditoría técnica y descubrimiento de webs (noviembre 2026)
+
+La extensión contractual se documenta en [Webs y auditoría técnica](webs-y-auditoria-tecnica.md). Las candidatas se separan de las URLs confirmadas; el worker no tiene acceso a SQLite y devuelve cuatro fases independientes por sitio. La API expone estado, historial y descarga autenticada. OpenAPI y el cliente TypeScript son generados desde el backend.

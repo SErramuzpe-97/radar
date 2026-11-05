@@ -7,6 +7,64 @@ info:
     identifier: MIT
   version: 0.1.0
 paths:
+  /api/auditorias-tecnicas/{id}/archivo/{kind}:
+    get:
+      tags:
+      - negocios
+      operationId: download
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: kind
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Informe original
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: Original caducado o no disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/auditorias-tecnicas/{id}/archivo/{kind}/preview:
+    get:
+      tags:
+      - negocios
+      operationId: preview
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: kind
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Vista previa aislada del informe HTML original
+          content:
+            text/plain:
+              schema:
+                type: string
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
   /api/auth/logout:
     post:
       tags:
@@ -85,6 +143,92 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorApi'
+  /api/clasificacion:
+    get:
+      tags:
+      - fuentes
+      operationId: clasificacion
+      responses:
+        '200':
+          description: Resultado del filtro comercial por evidencias
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumenClasificacion'
+  /api/cobertura:
+    get:
+      tags:
+      - stats
+      operationId: cobertura
+      responses:
+        '200':
+          description: Cobertura de registros conocidos por municipio
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CoberturaMunicipio'
+  /api/duplicados:
+    get:
+      tags:
+      - negocios
+      operationId: list_duplicados
+      responses:
+        '200':
+          description: Posibles duplicados pendientes de revisión
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CandidatoDuplicado'
+  /api/duplicados/{id}:
+    delete:
+      tags:
+      - negocios
+      operationId: descartar_duplicado
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '204':
+          description: Sugerencia descartada
+        '404':
+          description: No encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/duplicados/{id}/fusionar:
+    post:
+      tags:
+      - negocios
+      operationId: fusionar_duplicado
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FusionDuplicado'
+        required: true
+      responses:
+        '200':
+          description: Fichas fusionadas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MensajeOk'
   /api/export:
     get:
       tags:
@@ -111,6 +255,11 @@ paths:
         required: false
         schema:
           type: string
+      - name: rubro
+        in: query
+        required: false
+        schema:
+          type: string
       - name: q
         in: query
         required: false
@@ -125,6 +274,107 @@ paths:
                 type: string
         '500':
           description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/fuentes:
+    get:
+      tags:
+      - fuentes
+      operationId: list_fuentes
+      responses:
+        '200':
+          description: Fuentes configuradas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Fuente'
+    post:
+      tags:
+      - fuentes
+      operationId: create_fuente
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuevaFuente'
+        required: true
+      responses:
+        '201':
+          description: Fuente creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fuente'
+  /api/fuentes/candidatas:
+    get:
+      tags:
+      - fuentes
+      operationId: list_fuentes_candidatas
+      responses:
+        '200':
+          description: Dominios candidatos descubiertos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FuenteCandidata'
+  /api/fuentes/candidatas/{id}:
+    patch:
+      tags:
+      - fuentes
+      operationId: update_fuente_candidata
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EstadoCandidataRequest'
+        required: true
+      responses:
+        '200':
+          description: Candidata actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MensajeOk'
+  /api/fuentes/{id}:
+    patch:
+      tags:
+      - fuentes
+      operationId: update_fuente
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiarFuenteRequest'
+        required: true
+      responses:
+        '200':
+          description: Fuente actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Fuente'
+        '404':
+          description: Fuente no encontrada
           content:
             application/json:
               schema:
@@ -167,6 +417,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorApi'
+  /api/jobs/crawl:
+    post:
+      tags:
+      - jobs
+      operationId: lanzar_crawl
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrawlParams'
+        required: true
+      responses:
+        '202':
+          description: Rastreo lanzado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /api/jobs/discovery:
+    post:
+      tags:
+      - jobs
+      operationId: bulk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusquedaWebParams'
+        required: true
+      responses:
+        '202':
+          description: Descubrimiento reanudable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
   /api/jobs/scan:
     post:
       tags:
@@ -240,6 +526,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorApi'
+  /api/jobs/{id}/retry:
+    post:
+      tags:
+      - jobs
+      operationId: retry_job
+      parameters:
+      - name: id
+        in: path
+        description: ID del job
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: Job reintentado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '404':
+          description: Job no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+        '409':
+          description: Hay otro job activo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
   /api/negocios:
     get:
       tags:
@@ -256,7 +573,27 @@ paths:
         required: false
         schema:
           type: string
+      - name: rubro
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: tipo_entidad
+        in: query
+        required: false
+        schema:
+          type: string
       - name: estado_web
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: estado_auditoria_tecnica
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: estado_pipeline
         in: query
         required: false
         schema:
@@ -293,6 +630,35 @@ paths:
         schema:
           type: integer
           format: int64
+      - name: mostrar_descartados
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: sur
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+      - name: oeste
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+      - name: norte
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+      - name: este
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
       responses:
         '200':
           description: Página de negocios
@@ -302,6 +668,147 @@ paths:
                 $ref: '#/components/schemas/PaginaNegocios'
         '500':
           description: Error interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/descartados:
+    patch:
+      tags:
+      - negocios
+      operationId: set_descartados
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActualizarDescartados'
+        required: true
+      responses:
+        '200':
+          description: Negocios archivados o restaurados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoDescartados'
+  /api/negocios/mapa:
+    get:
+      tags:
+      - negocios
+      operationId: list_negocios_mapa
+      parameters:
+      - name: municipio
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: sector
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: rubro
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: tipo_entidad
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: estado_web
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: estado_auditoria_tecnica
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: estado_pipeline
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: prioridad
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: ordenar
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: dir
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: pagina
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: tam
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: mostrar_descartados
+        in: query
+        required: false
+        schema:
+          type: boolean
+      - name: sur
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+      - name: oeste
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+      - name: norte
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+      - name: este
+        in: query
+        required: false
+        schema:
+          type: number
+          format: double
+      - name: zoom
+        in: query
+        description: Nivel de zoom de Leaflet (0–19). La respuesta contiene como máximo 825 elementos.
+        required: false
+        schema:
+          type: integer
+          format: int32
+          minimum: 0
+      responses:
+        '200':
+          description: Zona visible agrupada, hasta 825 elementos sin truncar empresas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespuestaMapa'
+        '400':
+          description: Zona inválida
           content:
             application/json:
               schema:
@@ -332,6 +839,192 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}/auditoria-tecnica:
+    get:
+      tags:
+      - negocios
+      operationId: report
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Informes por motor y dispositivo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadoAuditoriaTecnica'
+    post:
+      tags:
+      - jobs
+      operationId: launch
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '202':
+          description: Auditoría técnica programada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: Confirma primero una URL propia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}/auditoria-tecnica/revisiones:
+    get:
+      tags:
+      - negocios
+      operationId: reviews
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Revisiones humanas persistidas de los hallazgos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RevisionHallazgo'
+    put:
+      tags:
+      - negocios
+      operationId: save_review
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActualizarRevisionHallazgo'
+        required: true
+      responses:
+        '200':
+          description: Estado de revisión guardado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevisionHallazgo'
+        '400':
+          description: Revisión no válida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}/borradores:
+    get:
+      tags:
+      - crm
+      operationId: list_borradores
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Borradores guardados
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BorradorContacto'
+    post:
+      tags:
+      - crm
+      operationId: create_borrador
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuevoBorrador'
+        required: true
+      responses:
+        '201':
+          description: Borrador guardado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BorradorContacto'
+  /api/negocios/{id}/diagnostico-visita:
+    get:
+      tags:
+      - negocios
+      operationId: visit_state
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Biblioteca de capturas y selección para una visita
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadoDiagnosticoVisita'
+        '404':
+          description: Negocio no encontrado
+    put:
+      tags:
+      - negocios
+      operationId: save_visit_state
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuardarDiagnosticoVisita'
+        required: true
+      responses:
+        '200':
+          description: Selección y notas guardadas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadoDiagnosticoVisita'
+        '400':
+          description: Captura o estado no válido
   /api/negocios/{id}/eventos:
     get:
       tags:
@@ -385,6 +1078,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}/oportunidades/{servicio}:
+    patch:
+      tags:
+      - negocios
+      operationId: set_oportunidad
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: servicio
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetOportunidadRequest'
+        required: true
+      responses:
+        '200':
+          description: Estado de oportunidad actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OportunidadServicio'
+        '404':
+          description: Negocio u oportunidad no existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
   /api/negocios/{id}/pipeline:
     patch:
       tags:
@@ -417,6 +1146,126 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}/web:
+    get:
+      tags:
+      - negocios
+      operationId: info
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Web confirmada, candidatas y búsqueda disponible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebInfo'
+    patch:
+      tags:
+      - negocios
+      operationId: confirm
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmarWeb'
+        required: true
+      responses:
+        '200':
+          description: Web confirmada; auditoría programada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebInfo'
+        '400':
+          description: URL no válida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}/web/candidatas/{candidate}:
+    delete:
+      tags:
+      - negocios
+      operationId: discard
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: candidate
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '204':
+          description: Sugerencia descartada
+  /api/negocios/{id}/web/descubrir:
+    post:
+      tags:
+      - jobs
+      operationId: discover
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '202':
+          description: Búsqueda de web programada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /api/plantillas:
+    get:
+      tags:
+      - crm
+      operationId: list_plantillas
+      responses:
+        '200':
+          description: Plantillas de contacto
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlantillaContacto'
+    post:
+      tags:
+      - crm
+      operationId: create_plantilla
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NuevaPlantillaContacto'
+        required: true
+      responses:
+        '201':
+          description: Plantilla creada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlantillaContacto'
   /api/stats:
     get:
       tags:
@@ -429,8 +1278,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Stats'
+  /api/tareas:
+    get:
+      tags:
+      - crm
+      operationId: list_tareas
+      parameters:
+      - name: desde
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: hasta
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: prioridad
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: servicio
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: estado
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Seguimientos pendientes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TareaSeguimiento'
 components:
   schemas:
+    ActualizarDescartados:
+      type: object
+      required:
+      - ids
+      - descartado
+      properties:
+        descartado:
+          type: boolean
+        ids:
+          type: array
+          items:
+            type: integer
+            format: int64
+        motivo:
+          type:
+          - string
+          - 'null'
+    ActualizarRevisionHallazgo:
+      type: object
+      required:
+      - report_id
+      - finding_key
+      - estado
+      properties:
+        estado:
+          type: string
+        finding_key:
+          type: string
+        motivo:
+          type:
+          - string
+          - 'null'
+        report_id:
+          type: string
     AuditParams:
       type: object
       properties:
@@ -443,6 +1366,9 @@ components:
           type:
           - string
           - 'null'
+        solo_sin_auditar:
+          type: boolean
+          description: Auditar únicamente registros sin auditoría (reconstrucción).
     Auditoria:
       type: object
       required:
@@ -470,6 +1396,49 @@ components:
           type: integer
           format: int64
         senales: {}
+    AuditoriaTecnica:
+      type: object
+      required:
+      - id
+      - job_id
+      - negocio_id
+      - url
+      - motor
+      - dispositivo
+      - version
+      - estado
+      - fecha
+      - resultado
+      - archivos
+      properties:
+        archivos:
+          type: array
+          items:
+            type: string
+        dispositivo:
+          type: string
+        error:
+          type:
+          - string
+          - 'null'
+        estado:
+          type: string
+        fecha:
+          type: string
+        id:
+          type: string
+        job_id:
+          type: string
+        motor:
+          type: string
+        negocio_id:
+          type: integer
+          format: int64
+        resultado: {}
+        url:
+          type: string
+        version:
+          type: string
     AuthMe:
       type: object
       required:
@@ -498,6 +1467,198 @@ components:
           description: Código de 6 dígitos enviado por email
         email:
           type: string
+    BorradorContacto:
+      type: object
+      required:
+      - id
+      - negocio_id
+      - canal
+      - cuerpo
+      - creado
+      - actualizado
+      properties:
+        actualizado:
+          type: string
+        asunto:
+          type:
+          - string
+          - 'null'
+        canal:
+          type: string
+        creado:
+          type: string
+        cuerpo:
+          type: string
+        destino:
+          type:
+          - string
+          - 'null'
+        id:
+          type: integer
+          format: int64
+        negocio_id:
+          type: integer
+          format: int64
+    BusquedaWebParams:
+      type: object
+      properties:
+        negocio_id:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        pendientes:
+          type: boolean
+    CambiarFuenteRequest:
+      type: object
+      required:
+      - habilitada
+      properties:
+        habilitada:
+          type: boolean
+    CandidatoDuplicado:
+      type: object
+      required:
+      - id
+      - negocio_a
+      - nombre_a
+      - negocio_b
+      - nombre_b
+      - razon
+      properties:
+        id:
+          type: integer
+          format: int64
+        negocio_a:
+          type: integer
+          format: int64
+        negocio_b:
+          type: integer
+          format: int64
+        nombre_a:
+          type: string
+        nombre_b:
+          type: string
+        razon:
+          type: string
+    CapturaCatalogoVisita:
+      type: object
+      required:
+      - capture_id
+      - report_id
+      - key
+      - width
+      - page
+      - fecha
+      properties:
+        capture_id:
+          type: string
+        fecha:
+          type: string
+        key:
+          type: string
+        page:
+          type: string
+        report_id:
+          type: string
+        width:
+          type: integer
+          format: int32
+          minimum: 0
+    CapturaVisita:
+      type: object
+      required:
+      - capture_id
+      - estado
+      - orden
+      - titulo
+      - que
+      - impacto
+      - propuesta
+      properties:
+        capture_id:
+          type: string
+        estado:
+          type: string
+        impacto:
+          type: string
+        orden:
+          type: integer
+          format: int64
+        propuesta:
+          type: string
+        punto_x:
+          type:
+          - number
+          - 'null'
+          format: double
+        punto_y:
+          type:
+          - number
+          - 'null'
+          format: double
+        que:
+          type: string
+        titulo:
+          type: string
+    CoberturaMunicipio:
+      type: object
+      required:
+      - municipio
+      - negocios
+      - auditados
+      properties:
+        auditados:
+          type: integer
+          format: int64
+        municipio:
+          type: string
+        negocios:
+          type: integer
+          format: int64
+    ConfirmarWeb:
+      type: object
+      required:
+      - url
+      properties:
+        direccion:
+          type:
+          - string
+          - 'null'
+        municipio:
+          type:
+          - string
+          - 'null'
+        url:
+          type: string
+    ConversionServicio:
+      type: object
+      required:
+      - servicio
+      - resueltas
+      - contratadas
+      properties:
+        contratadas:
+          type: integer
+          format: int64
+        resueltas:
+          type: integer
+          format: int64
+        servicio:
+          $ref: '#/components/schemas/ServicioWeb'
+        tasa:
+          type:
+          - number
+          - 'null'
+          format: double
+    CrawlParams:
+      type: object
+      required:
+      - fuente_id
+      properties:
+        fuente_id:
+          type: integer
+          format: int64
     ErrorApi:
       type: object
       required:
@@ -505,6 +1666,47 @@ components:
       properties:
         error:
           type: string
+    EstadoAuditoriaTecnica:
+      type: object
+      required:
+      - informes
+      - worker_disponible
+      properties:
+        informes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditoriaTecnica'
+        job:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/Job'
+        worker_disponible:
+          type: boolean
+    EstadoCandidataRequest:
+      type: object
+      required:
+      - estado
+      properties:
+        estado:
+          type: string
+    EstadoDiagnosticoVisita:
+      type: object
+      required:
+      - capturas
+      - catalogo
+      properties:
+        actualizado:
+          type:
+          - string
+          - 'null'
+        capturas:
+          type: array
+          items:
+            $ref: '#/components/schemas/CapturaVisita'
+        catalogo:
+          type: array
+          items:
+            $ref: '#/components/schemas/CapturaCatalogoVisita'
     EstadoJob:
       type: string
       enum:
@@ -512,6 +1714,13 @@ components:
       - en_curso
       - terminado
       - error
+    EstadoOportunidad:
+      type: string
+      enum:
+      - pendiente
+      - propuesta
+      - contratada
+      - descartada
     EstadoPipeline:
       type: string
       enum:
@@ -526,6 +1735,7 @@ components:
       type: string
       enum:
       - SIN_WEB
+      - NO_VERIFICABLE
       - SOLO_REDES
       - WEB_ROTA
       - WEB_APARCADA
@@ -558,6 +1768,100 @@ components:
           - 'null'
         tipo:
           type: string
+    Fuente:
+      type: object
+      required:
+      - id
+      - nombre
+      - tipo
+      - url
+      - habilitada
+      - profundidad
+      - max_paginas_dia
+      properties:
+        atribucion:
+          type:
+          - string
+          - 'null'
+        condiciones:
+          type:
+          - string
+          - 'null'
+        error_ultima_ejecucion:
+          type:
+          - string
+          - 'null'
+        habilitada:
+          type: boolean
+        id:
+          type: integer
+          format: int64
+        max_paginas_dia:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        profundidad:
+          type: integer
+          format: int64
+        revisada_en:
+          type:
+          - string
+          - 'null'
+        tipo:
+          type: string
+        ultima_ejecucion:
+          type:
+          - string
+          - 'null'
+        url:
+          type: string
+    FuenteCandidata:
+      type: object
+      required:
+      - id
+      - nombre
+      - url
+      - descubrimiento
+      - creada
+      properties:
+        creada:
+          type: string
+        descubrimiento:
+          type: string
+        fuente_padre_id:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        id:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        url:
+          type: string
+    FusionDuplicado:
+      type: object
+      required:
+      - conservar_id
+      - fusionar_id
+      properties:
+        conservar_id:
+          type: integer
+          format: int64
+        fusionar_id:
+          type: integer
+          format: int64
+    GuardarDiagnosticoVisita:
+      type: object
+      required:
+      - capturas
+      properties:
+        capturas:
+          type: array
+          items:
+            $ref: '#/components/schemas/CapturaVisita'
     Job:
       type: object
       required:
@@ -586,6 +1890,7 @@ components:
         id:
           type: string
         params: {}
+        resumen: {}
         tipo:
           $ref: '#/components/schemas/TipoJob'
         total:
@@ -612,6 +1917,8 @@ components:
           type:
           - string
           - 'null'
+        descartado:
+          type: boolean
         direccion:
           type:
           - string
@@ -620,6 +1927,16 @@ components:
           type:
           - string
           - 'null'
+        estado_auditoria_tecnica:
+          type: string
+        estado_pipeline:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/EstadoPipeline'
+        estado_web_lista:
+          type: string
+        evidencia_rubro:
+          description: Evidencias de actividad, tarifa y presencia web registradas por la fuente.
         fuente:
           type: string
         fuente_id:
@@ -641,8 +1958,26 @@ components:
           type: string
         nombre:
           type: string
+        oportunidades:
+          type: array
+          items:
+            $ref: '#/components/schemas/OportunidadServicio'
         primera_vista:
           type: string
+        prioridad_comercial:
+          type:
+          - string
+          - 'null'
+        rubro:
+          type:
+          - string
+          - 'null'
+          description: Clasificación comercial detallada; sector conserva la agrupación general.
+        score_potencial:
+          type:
+          - integer
+          - 'null'
+          format: int64
         sector:
           type:
           - string
@@ -666,11 +2001,16 @@ components:
       - negocio
       - auditorias
       - eventos
+      - web_info
       properties:
         auditorias:
           type: array
           items:
             $ref: '#/components/schemas/Auditoria'
+        borradores:
+          type: array
+          items:
+            $ref: '#/components/schemas/BorradorContacto'
         eventos:
           type: array
           items:
@@ -681,6 +2021,87 @@ components:
           oneOf:
           - type: 'null'
           - $ref: '#/components/schemas/Pipeline'
+        web_info:
+          $ref: '#/components/schemas/WebInfo'
+    NuevaFuente:
+      type: object
+      required:
+      - nombre
+      - tipo
+      - url
+      - condiciones
+      - atribucion
+      - revisada_en
+      properties:
+        atribucion:
+          type: string
+        condiciones:
+          type: string
+        habilitada:
+          type: boolean
+        max_paginas_dia:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        profundidad:
+          type: integer
+          format: int64
+        revisada_en:
+          type: string
+        tipo:
+          type: string
+          description: semilla, busqueda o dataset
+        url:
+          type: string
+    NuevaPlantillaContacto:
+      type: object
+      required:
+      - nombre
+      - canal
+      - cuerpo
+      properties:
+        asunto:
+          type:
+          - string
+          - 'null'
+        canal:
+          type: string
+        cuerpo:
+          type: string
+        nombre:
+          type: string
+        servicio:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/ServicioWeb'
+    NuevoBorrador:
+      type: object
+      required:
+      - negocio_id
+      - canal
+      - cuerpo
+      properties:
+        asunto:
+          type:
+          - string
+          - 'null'
+        canal:
+          type: string
+        cuerpo:
+          type: string
+        destino:
+          type:
+          - string
+          - 'null'
+        negocio_id:
+          type: integer
+          format: int64
+        plantilla_id:
+          type:
+          - integer
+          - 'null'
+          format: int64
     NuevoEvento:
       type: object
       required:
@@ -696,6 +2117,30 @@ components:
           - 'null'
         tipo:
           type: string
+    OportunidadServicio:
+      type: object
+      required:
+      - negocio_id
+      - servicio
+      - score
+      - estado
+      - motivo
+      - fecha
+      properties:
+        estado:
+          $ref: '#/components/schemas/EstadoOportunidad'
+        fecha:
+          type: string
+        motivo:
+          type: string
+        negocio_id:
+          type: integer
+          format: int64
+        score:
+          type: integer
+          format: int64
+        servicio:
+          $ref: '#/components/schemas/ServicioWeb'
     PaginaNegocios:
       type: object
       description: GET /api/negocios → página de negocios (schema propio, sin genéricos, para el OAS).
@@ -751,22 +2196,187 @@ components:
           type:
           - string
           - 'null'
+        siguiente_accion_fecha:
+          type:
+          - string
+          - 'null'
         valor_estimado:
           type:
           - number
           - 'null'
           format: double
-    ScanParams:
+    PlantillaContacto:
       type: object
       required:
-      - municipio
+      - id
+      - nombre
+      - canal
+      - cuerpo
+      - actualizado
       properties:
-        municipio:
+        actualizado:
           type: string
+        asunto:
+          type:
+          - string
+          - 'null'
+        canal:
+          type: string
+        cuerpo:
+          type: string
+        id:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        servicio:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/ServicioWeb'
+    PuntoMapa:
+      type: object
+      description: Solo los datos necesarios para pintar un punto o una agrupación.
+      required:
+      - lat
+      - lon
+      - cantidad
+      - zona
+      properties:
+        cantidad:
+          type: integer
+          format: int64
+        id:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        lat:
+          type: number
+          format: double
+        lon:
+          type: number
+          format: double
+        nombre:
+          type:
+          - string
+          - 'null'
+        score_potencial:
+          type:
+          - integer
+          - 'null'
+          format: int64
         sector:
           type:
           - string
           - 'null'
+        zona:
+          $ref: '#/components/schemas/ZonaMapa'
+    RespuestaMapa:
+      type: object
+      required:
+      - items
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PuntoMapa'
+        total:
+          type: integer
+          format: int64
+          description: Empresas con coordenadas válidas dentro de la zona solicitada, sin truncar.
+        zona:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/ZonaMapa'
+    ResultadoDescartados:
+      type: object
+      required:
+      - actualizados
+      properties:
+        actualizados:
+          type: integer
+          format: int64
+    ResumenClasificacion:
+      type: object
+      required:
+      - examinados
+      - admitidos
+      - excluidos
+      - pendientes
+      - motivos
+      - version
+      properties:
+        admitidos:
+          type: integer
+          format: int64
+        examinados:
+          type: integer
+          format: int64
+        excluidos:
+          type: integer
+          format: int64
+        motivos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ParEtiqueta'
+        pendientes:
+          type: integer
+          format: int64
+        version:
+          type: integer
+          format: int64
+    RevisionHallazgo:
+      type: object
+      required:
+      - report_id
+      - finding_key
+      - estado
+      - actualizado
+      properties:
+        actualizado:
+          type: string
+        estado:
+          type: string
+        finding_key:
+          type: string
+        motivo:
+          type:
+          - string
+          - 'null'
+        report_id:
+          type: string
+    ScanParams:
+      type: object
+      properties:
+        municipio:
+          type:
+          - string
+          - 'null'
+        municipios:
+          type: array
+          items:
+            type: string
+        navarra:
+          type: boolean
+        sector:
+          type:
+          - string
+          - 'null'
+    ServicioWeb:
+      type: string
+      enum:
+      - creacion_web
+      - landing
+      - seo_on_page
+      - hosting
+    SetOportunidadRequest:
+      type: object
+      required:
+      - estado
+      properties:
+        estado:
+          $ref: '#/components/schemas/EstadoOportunidad'
     SetPipelineRequest:
       type: object
       properties:
@@ -778,7 +2388,13 @@ components:
           oneOf:
           - type: 'null'
           - $ref: '#/components/schemas/EstadoPipeline'
+        limpiar_fecha_siguiente_accion:
+          type: boolean
         siguiente_accion:
+          type:
+          - string
+          - 'null'
+        siguiente_accion_fecha:
           type:
           - string
           - 'null'
@@ -795,7 +2411,12 @@ components:
       - por_prioridad
       - por_pipeline
       - eventos_ultimos_7_dias
+      - conversion_por_servicio
       properties:
+        conversion_por_servicio:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversionServicio'
         eventos_ultimos_7_dias:
           type: integer
           format: int64
@@ -814,6 +2435,37 @@ components:
         total_negocios:
           type: integer
           format: int64
+    TareaSeguimiento:
+      type: object
+      required:
+      - negocio_id
+      - nombre
+      - municipio
+      - siguiente_accion
+      - fecha
+      - estado
+      properties:
+        estado:
+          $ref: '#/components/schemas/EstadoPipeline'
+        fecha:
+          type: string
+        municipio:
+          type: string
+        negocio_id:
+          type: integer
+          format: int64
+        nombre:
+          type: string
+        prioridad:
+          type:
+          - string
+          - 'null'
+        servicios:
+          type: array
+          items:
+            type: string
+        siguiente_accion:
+          type: string
     TipoJob:
       type: string
       enum:
@@ -821,6 +2473,10 @@ components:
       - audit
       - watch
       - export
+      - crawl
+      - rebuild
+      - discovery
+      - technical
     WatchParams:
       type: object
       required:
@@ -834,6 +2490,103 @@ components:
         fuente:
           type: string
           description: Fuente a vigilar. `borme` consulta el sumario diario oficial del BOE; `openmercantil` es alias compatible.
+    WebCandidata:
+      type: object
+      required:
+      - id
+      - url
+      - tipo
+      - proveedor
+      - fecha
+      - estado
+      - evidencias
+      properties:
+        consulta:
+          type:
+          - string
+          - 'null'
+        estado:
+          type: string
+        evidencias: {}
+        fecha:
+          type: string
+        id:
+          type: integer
+          format: int64
+        posicion:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        proveedor:
+          type: string
+        tipo:
+          type: string
+        titulo:
+          type:
+          - string
+          - 'null'
+        url:
+          type: string
+    WebInfo:
+      type: object
+      required:
+      - estado
+      - consulta
+      - buscador_configurado
+      - creditos_restantes
+      - candidatas
+      properties:
+        aviso:
+          type:
+          - string
+          - 'null'
+        buscador_configurado:
+          type: boolean
+        candidatas:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebCandidata'
+        consulta:
+          type: string
+        creditos_restantes:
+          type: integer
+          format: int64
+        estado:
+          type: string
+        origen:
+          type:
+          - string
+          - 'null'
+        ultima_busqueda:
+          type:
+          - string
+          - 'null'
+        url_confirmada:
+          type:
+          - string
+          - 'null'
+    ZonaMapa:
+      type: object
+      description: Extensión geográfica de una zona o agrupación (WGS84).
+      required:
+      - sur
+      - oeste
+      - norte
+      - este
+      properties:
+        este:
+          type: number
+          format: double
+        norte:
+          type: number
+          format: double
+        oeste:
+          type: number
+          format: double
+        sur:
+          type: number
+          format: double
 tags:
 - name: negocios
   description: Negocios, pipeline CRM y eventos

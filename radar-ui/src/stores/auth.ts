@@ -56,7 +56,10 @@ export async function cargarSesion() {
 }
 
 export async function logout() {
-  await api.POST("/api/auth/logout", { headers: authHeaders() });
-  setToken(null);
-  sesionEmail.value = null;
+  try {
+    await api.POST("/api/auth/logout", { headers: authHeaders() });
+  } finally {
+    setToken(null);
+    sesionEmail.value = null;
+  }
 }

@@ -4,6 +4,38 @@
  */
 
 export interface paths {
+    "/api/auditorias-tecnicas/{id}/archivo/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auditorias-tecnicas/{id}/archivo/{kind}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/logout": {
         parameters: {
             query?: never;
@@ -68,6 +100,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/clasificacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["clasificacion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cobertura": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["cobertura"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/duplicados": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_duplicados"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/duplicados/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["descartar_duplicado"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/duplicados/{id}/fusionar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["fusionar_duplicado"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/export": {
         parameters: {
             query?: never;
@@ -82,6 +194,70 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/fuentes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_fuentes"];
+        put?: never;
+        post: operations["create_fuente"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/fuentes/candidatas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_fuentes_candidatas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/fuentes/candidatas/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["update_fuente_candidata"];
+        trace?: never;
+    };
+    "/api/fuentes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["update_fuente"];
         trace?: never;
     };
     "/api/jobs": {
@@ -110,6 +286,38 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["lanzar_audit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/crawl": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["lanzar_crawl"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/jobs/discovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["bulk"];
         delete?: never;
         options?: never;
         head?: never;
@@ -164,6 +372,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/jobs/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["retry_job"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/negocios": {
         parameters: {
             query?: never;
@@ -172,6 +396,38 @@ export interface paths {
             cookie?: never;
         };
         get: operations["list_negocios"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/negocios/descartados": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["set_descartados"];
+        trace?: never;
+    };
+    "/api/negocios/mapa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_negocios_mapa"];
         put?: never;
         post?: never;
         delete?: never;
@@ -196,6 +452,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/negocios/{id}/auditoria-tecnica": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["report"];
+        put?: never;
+        post: operations["launch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/negocios/{id}/auditoria-tecnica/revisiones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["reviews"];
+        put: operations["save_review"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/negocios/{id}/borradores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_borradores"];
+        put?: never;
+        post: operations["create_borrador"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/negocios/{id}/diagnostico-visita": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["visit_state"];
+        put: operations["save_visit_state"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/negocios/{id}/eventos": {
         parameters: {
             query?: never;
@@ -210,6 +530,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/negocios/{id}/oportunidades/{servicio}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["set_oportunidad"];
         trace?: never;
     };
     "/api/negocios/{id}/pipeline": {
@@ -228,6 +564,70 @@ export interface paths {
         patch: operations["set_pipeline"];
         trace?: never;
     };
+    "/api/negocios/{id}/web": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["info"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["confirm"];
+        trace?: never;
+    };
+    "/api/negocios/{id}/web/candidatas/{candidate}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["discard"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/negocios/{id}/web/descubrir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["discover"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plantillas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_plantillas"];
+        put?: never;
+        post: operations["create_plantilla"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/stats": {
         parameters: {
             query?: never;
@@ -244,14 +644,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/tareas": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_tareas"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ActualizarDescartados: {
+            descartado: boolean;
+            ids: number[];
+            motivo?: string | null;
+        };
+        ActualizarRevisionHallazgo: {
+            estado: string;
+            finding_key: string;
+            motivo?: string | null;
+            report_id: string;
+        };
         AuditParams: {
             /** Format: int64 */
             limite?: number | null;
             prioridad?: string | null;
+            /** @description Auditar únicamente registros sin auditoría (reconstrucción). */
+            solo_sin_auditar?: boolean;
         };
         Auditoria: {
             estado_web: components["schemas"]["EstadoWeb"];
@@ -265,6 +694,21 @@ export interface components {
             score: number;
             senales: unknown;
         };
+        AuditoriaTecnica: {
+            archivos: string[];
+            dispositivo: string;
+            error?: string | null;
+            estado: string;
+            fecha: string;
+            id: string;
+            job_id: string;
+            motor: string;
+            /** Format: int64 */
+            negocio_id: number;
+            resultado: unknown;
+            url: string;
+            version: string;
+        };
         AuthMe: {
             email: string;
             expira: string;
@@ -277,15 +721,109 @@ export interface components {
             code: string;
             email: string;
         };
+        BorradorContacto: {
+            actualizado: string;
+            asunto?: string | null;
+            canal: string;
+            creado: string;
+            cuerpo: string;
+            destino?: string | null;
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            negocio_id: number;
+        };
+        BusquedaWebParams: {
+            /** Format: int64 */
+            negocio_id?: number | null;
+            pendientes?: boolean;
+        };
+        CambiarFuenteRequest: {
+            habilitada: boolean;
+        };
+        CandidatoDuplicado: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            negocio_a: number;
+            /** Format: int64 */
+            negocio_b: number;
+            nombre_a: string;
+            nombre_b: string;
+            razon: string;
+        };
+        CapturaCatalogoVisita: {
+            capture_id: string;
+            fecha: string;
+            key: string;
+            page: string;
+            report_id: string;
+            /** Format: int32 */
+            width: number;
+        };
+        CapturaVisita: {
+            capture_id: string;
+            estado: string;
+            impacto: string;
+            /** Format: int64 */
+            orden: number;
+            propuesta: string;
+            /** Format: double */
+            punto_x?: number | null;
+            /** Format: double */
+            punto_y?: number | null;
+            que: string;
+            titulo: string;
+        };
+        CoberturaMunicipio: {
+            /** Format: int64 */
+            auditados: number;
+            municipio: string;
+            /** Format: int64 */
+            negocios: number;
+        };
+        ConfirmarWeb: {
+            direccion?: string | null;
+            municipio?: string | null;
+            url: string;
+        };
+        ConversionServicio: {
+            /** Format: int64 */
+            contratadas: number;
+            /** Format: int64 */
+            resueltas: number;
+            servicio: components["schemas"]["ServicioWeb"];
+            /** Format: double */
+            tasa?: number | null;
+        };
+        CrawlParams: {
+            /** Format: int64 */
+            fuente_id: number;
+        };
         ErrorApi: {
             error: string;
+        };
+        EstadoAuditoriaTecnica: {
+            informes: components["schemas"]["AuditoriaTecnica"][];
+            job?: null | components["schemas"]["Job"];
+            worker_disponible: boolean;
+        };
+        EstadoCandidataRequest: {
+            estado: string;
+        };
+        EstadoDiagnosticoVisita: {
+            actualizado?: string | null;
+            capturas: components["schemas"]["CapturaVisita"][];
+            catalogo: components["schemas"]["CapturaCatalogoVisita"][];
         };
         /** @enum {string} */
         EstadoJob: "pendiente" | "en_curso" | "terminado" | "error";
         /** @enum {string} */
+        EstadoOportunidad: "pendiente" | "propuesta" | "contratada" | "descartada";
+        /** @enum {string} */
         EstadoPipeline: "nuevo" | "contactado" | "visita_hecha" | "interesado" | "no_interesado" | "propuesta" | "cerrado";
         /** @enum {string} */
-        EstadoWeb: "SIN_WEB" | "SOLO_REDES" | "WEB_ROTA" | "WEB_APARCADA" | "WEB_OBSOLETA" | "WEB_MEJORABLE" | "WEB_OK";
+        EstadoWeb: "SIN_WEB" | "NO_VERIFICABLE" | "SOLO_REDES" | "WEB_ROTA" | "WEB_APARCADA" | "WEB_OBSOLETA" | "WEB_MEJORABLE" | "WEB_OK";
         Evento: {
             fecha: string;
             /** Format: int64 */
@@ -296,6 +834,42 @@ export interface components {
             resultado?: string | null;
             tipo: string;
         };
+        Fuente: {
+            atribucion?: string | null;
+            condiciones?: string | null;
+            error_ultima_ejecucion?: string | null;
+            habilitada: boolean;
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            max_paginas_dia: number;
+            nombre: string;
+            /** Format: int64 */
+            profundidad: number;
+            revisada_en?: string | null;
+            tipo: string;
+            ultima_ejecucion?: string | null;
+            url: string;
+        };
+        FuenteCandidata: {
+            creada: string;
+            descubrimiento: string;
+            /** Format: int64 */
+            fuente_padre_id?: number | null;
+            /** Format: int64 */
+            id: number;
+            nombre: string;
+            url: string;
+        };
+        FusionDuplicado: {
+            /** Format: int64 */
+            conservar_id: number;
+            /** Format: int64 */
+            fusionar_id: number;
+        };
+        GuardarDiagnosticoVisita: {
+            capturas: components["schemas"]["CapturaVisita"][];
+        };
         Job: {
             actualizado: string;
             creado: string;
@@ -305,6 +879,7 @@ export interface components {
             hechos: number;
             id: string;
             params: unknown;
+            resumen?: unknown;
             tipo: components["schemas"]["TipoJob"];
             /** Format: int64 */
             total: number;
@@ -314,8 +889,14 @@ export interface components {
         };
         Negocio: {
             categoria?: string | null;
+            descartado?: boolean;
             direccion?: string | null;
             email?: string | null;
+            estado_auditoria_tecnica?: string;
+            estado_pipeline?: null | components["schemas"]["EstadoPipeline"];
+            estado_web_lista?: string;
+            /** @description Evidencias de actividad, tarifa y presencia web registradas por la fuente. */
+            evidencia_rubro?: unknown;
             fuente: string;
             fuente_id: string;
             /** Format: int64 */
@@ -326,7 +907,13 @@ export interface components {
             lon?: number | null;
             municipio: string;
             nombre: string;
+            oportunidades?: components["schemas"]["OportunidadServicio"][];
             primera_vista: string;
+            prioridad_comercial?: string | null;
+            /** @description Clasificación comercial detallada; sector conserva la agrupación general. */
+            rubro?: string | null;
+            /** Format: int64 */
+            score_potencial?: number | null;
             sector?: string | null;
             telefono?: string | null;
             ultima_verificacion?: string | null;
@@ -335,14 +922,57 @@ export interface components {
         /** @description Respuesta plana de GET /api/negocios/{id} (negocio + últimas auditorías + pipeline + eventos). */
         NegocioDetalle: {
             auditorias: components["schemas"]["Auditoria"][];
+            borradores?: components["schemas"]["BorradorContacto"][];
             eventos: components["schemas"]["Evento"][];
             negocio: components["schemas"]["Negocio"];
             pipeline?: null | components["schemas"]["Pipeline"];
+            web_info: components["schemas"]["WebInfo"];
+        };
+        NuevaFuente: {
+            atribucion: string;
+            condiciones: string;
+            habilitada?: boolean;
+            /** Format: int64 */
+            max_paginas_dia?: number;
+            nombre: string;
+            /** Format: int64 */
+            profundidad?: number;
+            revisada_en: string;
+            /** @description semilla, busqueda o dataset */
+            tipo: string;
+            url: string;
+        };
+        NuevaPlantillaContacto: {
+            asunto?: string | null;
+            canal: string;
+            cuerpo: string;
+            nombre: string;
+            servicio?: null | components["schemas"]["ServicioWeb"];
+        };
+        NuevoBorrador: {
+            asunto?: string | null;
+            canal: string;
+            cuerpo: string;
+            destino?: string | null;
+            /** Format: int64 */
+            negocio_id: number;
+            /** Format: int64 */
+            plantilla_id?: number | null;
         };
         NuevoEvento: {
             notas?: string | null;
             resultado?: string | null;
             tipo: string;
+        };
+        OportunidadServicio: {
+            estado: components["schemas"]["EstadoOportunidad"];
+            fecha: string;
+            motivo: string;
+            /** Format: int64 */
+            negocio_id: number;
+            /** Format: int64 */
+            score: number;
+            servicio: components["schemas"]["ServicioWeb"];
         };
         /** @description GET /api/negocios → página de negocios (schema propio, sin genéricos, para el OAS). */
         PaginaNegocios: {
@@ -366,21 +996,91 @@ export interface components {
             /** Format: int64 */
             negocio_id: number;
             siguiente_accion?: string | null;
+            siguiente_accion_fecha?: string | null;
             /** Format: double */
             valor_estimado?: number | null;
         };
-        ScanParams: {
-            municipio: string;
+        PlantillaContacto: {
+            actualizado: string;
+            asunto?: string | null;
+            canal: string;
+            cuerpo: string;
+            /** Format: int64 */
+            id: number;
+            nombre: string;
+            servicio?: null | components["schemas"]["ServicioWeb"];
+        };
+        /** @description Solo los datos necesarios para pintar un punto o una agrupación. */
+        PuntoMapa: {
+            /** Format: int64 */
+            cantidad: number;
+            /** Format: int64 */
+            id?: number | null;
+            /** Format: double */
+            lat: number;
+            /** Format: double */
+            lon: number;
+            nombre?: string | null;
+            /** Format: int64 */
+            score_potencial?: number | null;
             sector?: string | null;
+            zona: components["schemas"]["ZonaMapa"];
+        };
+        RespuestaMapa: {
+            items: components["schemas"]["PuntoMapa"][];
+            /**
+             * Format: int64
+             * @description Empresas con coordenadas válidas dentro de la zona solicitada, sin truncar.
+             */
+            total: number;
+            zona?: null | components["schemas"]["ZonaMapa"];
+        };
+        ResultadoDescartados: {
+            /** Format: int64 */
+            actualizados: number;
+        };
+        ResumenClasificacion: {
+            /** Format: int64 */
+            admitidos: number;
+            /** Format: int64 */
+            examinados: number;
+            /** Format: int64 */
+            excluidos: number;
+            motivos: components["schemas"]["ParEtiqueta"][];
+            /** Format: int64 */
+            pendientes: number;
+            /** Format: int64 */
+            version: number;
+        };
+        RevisionHallazgo: {
+            actualizado: string;
+            estado: string;
+            finding_key: string;
+            motivo?: string | null;
+            report_id: string;
+        };
+        ScanParams: {
+            municipio?: string | null;
+            municipios?: string[];
+            navarra?: boolean;
+            sector?: string | null;
+        };
+        /** @enum {string} */
+        ServicioWeb: "creacion_web" | "landing" | "seo_on_page" | "hosting";
+        SetOportunidadRequest: {
+            estado: components["schemas"]["EstadoOportunidad"];
         };
         SetPipelineRequest: {
             canal?: string | null;
             estado?: null | components["schemas"]["EstadoPipeline"];
+            limpiar_fecha_siguiente_accion?: boolean;
             siguiente_accion?: string | null;
+            siguiente_accion_fecha?: string | null;
             /** Format: double */
             valor_estimado?: number | null;
         };
         Stats: {
+            conversion_por_servicio: components["schemas"]["ConversionServicio"][];
             /** Format: int64 */
             eventos_ultimos_7_dias: number;
             por_estado_web: components["schemas"]["ParEtiqueta"][];
@@ -389,13 +1089,61 @@ export interface components {
             /** Format: int64 */
             total_negocios: number;
         };
+        TareaSeguimiento: {
+            estado: components["schemas"]["EstadoPipeline"];
+            fecha: string;
+            municipio: string;
+            /** Format: int64 */
+            negocio_id: number;
+            nombre: string;
+            prioridad?: string | null;
+            servicios?: string[];
+            siguiente_accion: string;
+        };
         /** @enum {string} */
-        TipoJob: "scan" | "audit" | "watch" | "export";
+        TipoJob: "scan" | "audit" | "watch" | "export" | "crawl" | "rebuild" | "discovery" | "technical";
         WatchParams: {
             /** @description CSV manual opcional. Si se omite, descarga las publicaciones recientes del BORME. */
             csv?: string | null;
             /** @description Fuente a vigilar. `borme` consulta el sumario diario oficial del BOE; `openmercantil` es alias compatible. */
             fuente: string;
+        };
+        WebCandidata: {
+            consulta?: string | null;
+            estado: string;
+            evidencias: unknown;
+            fecha: string;
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            posicion?: number | null;
+            proveedor: string;
+            tipo: string;
+            titulo?: string | null;
+            url: string;
+        };
+        WebInfo: {
+            aviso?: string | null;
+            buscador_configurado: boolean;
+            candidatas: components["schemas"]["WebCandidata"][];
+            consulta: string;
+            /** Format: int64 */
+            creditos_restantes: number;
+            estado: string;
+            origen?: string | null;
+            ultima_busqueda?: string | null;
+            url_confirmada?: string | null;
+        };
+        /** @description Extensión geográfica de una zona o agrupación (WGS84). */
+        ZonaMapa: {
+            /** Format: double */
+            este: number;
+            /** Format: double */
+            norte: number;
+            /** Format: double */
+            oeste: number;
+            /** Format: double */
+            sur: number;
         };
     };
     responses: never;
@@ -406,6 +1154,69 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Informe original */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            /** @description Original caducado o no disponible */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
+    preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                kind: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Vista previa aislada del informe HTML original */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
     logout: {
         parameters: {
             query?: never;
@@ -521,6 +1332,121 @@ export interface operations {
             };
         };
     };
+    clasificacion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Resultado del filtro comercial por evidencias */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResumenClasificacion"];
+                };
+            };
+        };
+    };
+    cobertura: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Cobertura de registros conocidos por municipio */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoberturaMunicipio"][];
+                };
+            };
+        };
+    };
+    list_duplicados: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Posibles duplicados pendientes de revisión */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidatoDuplicado"][];
+                };
+            };
+        };
+    };
+    descartar_duplicado: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sugerencia descartada */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No encontrada */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
+    fusionar_duplicado: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FusionDuplicado"];
+            };
+        };
+        responses: {
+            /** @description Fichas fusionadas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MensajeOk"];
+                };
+            };
+        };
+    };
     export: {
         parameters: {
             query?: {
@@ -528,6 +1454,7 @@ export interface operations {
                 prioridad?: string;
                 municipio?: string;
                 sector?: string;
+                rubro?: string;
                 q?: string;
             };
             header?: never;
@@ -547,6 +1474,131 @@ export interface operations {
             };
             /** @description Error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
+    list_fuentes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fuentes configuradas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Fuente"][];
+                };
+            };
+        };
+    };
+    create_fuente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NuevaFuente"];
+            };
+        };
+        responses: {
+            /** @description Fuente creada */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Fuente"];
+                };
+            };
+        };
+    };
+    list_fuentes_candidatas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dominios candidatos descubiertos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FuenteCandidata"][];
+                };
+            };
+        };
+    };
+    update_fuente_candidata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EstadoCandidataRequest"];
+            };
+        };
+        responses: {
+            /** @description Candidata actualizada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MensajeOk"];
+                };
+            };
+        };
+    };
+    update_fuente: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CambiarFuenteRequest"];
+            };
+        };
+        responses: {
+            /** @description Fuente actualizada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Fuente"];
+                };
+            };
+            /** @description Fuente no encontrada */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -605,6 +1657,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
+    lanzar_crawl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrawlParams"];
+            };
+        };
+        responses: {
+            /** @description Rastreo lanzado */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    bulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BusquedaWebParams"];
+            };
+        };
+        responses: {
+            /** @description Descubrimiento reanudable */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
                 };
             };
         };
@@ -707,18 +1807,68 @@ export interface operations {
             };
         };
     };
+    retry_job: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description ID del job */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Job reintentado */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            /** @description Job no encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+            /** @description Hay otro job activo */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
     list_negocios: {
         parameters: {
             query?: {
                 municipio?: string;
                 sector?: string;
+                rubro?: string;
+                tipo_entidad?: string;
                 estado_web?: string;
+                estado_auditoria_tecnica?: string;
+                estado_pipeline?: string;
                 prioridad?: string;
                 q?: string;
                 ordenar?: string;
                 dir?: string;
                 pagina?: number;
                 tam?: number;
+                mostrar_descartados?: boolean;
+                sur?: number;
+                oeste?: number;
+                norte?: number;
+                este?: number;
             };
             header?: never;
             path?: never;
@@ -737,6 +1887,80 @@ export interface operations {
             };
             /** @description Error interno */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
+    set_descartados: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActualizarDescartados"];
+            };
+        };
+        responses: {
+            /** @description Negocios archivados o restaurados */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResultadoDescartados"];
+                };
+            };
+        };
+    };
+    list_negocios_mapa: {
+        parameters: {
+            query?: {
+                municipio?: string;
+                sector?: string;
+                rubro?: string;
+                tipo_entidad?: string;
+                estado_web?: string;
+                estado_auditoria_tecnica?: string;
+                estado_pipeline?: string;
+                prioridad?: string;
+                q?: string;
+                ordenar?: string;
+                dir?: string;
+                pagina?: number;
+                tam?: number;
+                mostrar_descartados?: boolean;
+                sur?: number;
+                oeste?: number;
+                norte?: number;
+                este?: number;
+                /** @description Nivel de zoom de Leaflet (0–19). La respuesta contiene como máximo 825 elementos. */
+                zoom?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Zona visible agrupada, hasta 825 elementos sin truncar empresas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RespuestaMapa"];
+                };
+            };
+            /** @description Zona inválida */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -775,6 +1999,226 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorApi"];
                 };
+            };
+        };
+    };
+    report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Informes por motor y dispositivo */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstadoAuditoriaTecnica"];
+                };
+            };
+        };
+    };
+    launch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Auditoría técnica programada */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            /** @description Confirma primero una URL propia */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
+    reviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revisiones humanas persistidas de los hallazgos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionHallazgo"][];
+                };
+            };
+        };
+    };
+    save_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActualizarRevisionHallazgo"];
+            };
+        };
+        responses: {
+            /** @description Estado de revisión guardado */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionHallazgo"];
+                };
+            };
+            /** @description Revisión no válida */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
+    list_borradores: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Borradores guardados */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BorradorContacto"][];
+                };
+            };
+        };
+    };
+    create_borrador: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NuevoBorrador"];
+            };
+        };
+        responses: {
+            /** @description Borrador guardado */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BorradorContacto"];
+                };
+            };
+        };
+    };
+    visit_state: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Biblioteca de capturas y selección para una visita */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstadoDiagnosticoVisita"];
+                };
+            };
+            /** @description Negocio no encontrado */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    save_visit_state: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuardarDiagnosticoVisita"];
+            };
+        };
+        responses: {
+            /** @description Selección y notas guardadas */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstadoDiagnosticoVisita"];
+                };
+            };
+            /** @description Captura o estado no válido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -837,6 +2281,42 @@ export interface operations {
             };
         };
     };
+    set_oportunidad: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                servicio: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetOportunidadRequest"];
+            };
+        };
+        responses: {
+            /** @description Estado de oportunidad actualizado */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OportunidadServicio"];
+                };
+            };
+            /** @description Negocio u oportunidad no existe */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
     set_pipeline: {
         parameters: {
             query?: never;
@@ -873,6 +2353,150 @@ export interface operations {
             };
         };
     };
+    info: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Web confirmada, candidatas y búsqueda disponible */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebInfo"];
+                };
+            };
+        };
+    };
+    confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmarWeb"];
+            };
+        };
+        responses: {
+            /** @description Web confirmada; auditoría programada */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebInfo"];
+                };
+            };
+            /** @description URL no válida */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
+    discard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                candidate: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sugerencia descartada */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    discover: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Búsqueda de web programada */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+        };
+    };
+    list_plantillas: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Plantillas de contacto */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantillaContacto"][];
+                };
+            };
+        };
+    };
+    create_plantilla: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NuevaPlantillaContacto"];
+            };
+        };
+        responses: {
+            /** @description Plantilla creada */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlantillaContacto"];
+                };
+            };
+        };
+    };
     stats: {
         parameters: {
             query?: never;
@@ -889,6 +2513,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Stats"];
+                };
+            };
+        };
+    };
+    list_tareas: {
+        parameters: {
+            query?: {
+                desde?: string;
+                hasta?: string;
+                prioridad?: string;
+                servicio?: string;
+                estado?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Seguimientos pendientes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TareaSeguimiento"][];
                 };
             };
         };

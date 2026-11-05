@@ -53,4 +53,7 @@ Generado con `scripts/tasks.sh board`. No editar a mano.
 | T-025 | Endurecimiento de la exposición: bind 127.0.0.1, cookie Secure tras proxy, headers de seguridad, CORS mismo origen | agent:codex | F2 | T-022 T-024 |
 | T-026 | Documentación de despliegue duckdns: cuenta, dominio, token, router, Caddyfile, SMTP, checklist | unassigned | F2 | T-024 |
 | T-027 | CI local: scripts/ci-local.sh (tasks validate + cargo check + drift OAS + gen:api + npm build) | agent:codex | F0 | T-002 T-019 T-020 |
+| T-028 | Mapa por zona visible con agrupación acotada para 55k empresas | agent:codex | F2 |  |
+| T-029 | Filtros de auditoría rápidos con índices y cancelación de consultas | agent:codex | F2 |  |
+| T-030 | Desbloquear auditorías técnicas tras cambios de URL | agent:codex | F2 |  |
 

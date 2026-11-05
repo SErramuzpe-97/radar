@@ -5,6 +5,8 @@ navarros a los que ofrecer servicios web: descubre candidatos (OSM/BORME), audit
 los puntúa 0–100, los sitúa en un mapa y hace de mini-CRM. Todo local, 0 €.
 
 - **Diseño completo:** [docs/diseno-sistema-radar.md](docs/diseno-sistema-radar.md)
+- **Calidad y reconstrucción:** [docs/calidad-y-reconstruccion.md](docs/calidad-y-reconstruccion.md)
+- **Plan de mejoras:** [docs/plan-mejoras.md](docs/plan-mejoras.md)
 - **Decisiones (ADR):** [docs/adr/](docs/adr/)
 - **API (OAS):** [api/openapi.yaml](api/openapi.yaml) · guía en [docs/api.md](docs/api.md)
 - **Exposición duckdns + login por código:** [docs/exposicion-duckdns.md](docs/exposicion-duckdns.md)
@@ -32,14 +34,17 @@ docs/                   Diseño, ADRs, guías
 cargo run -p radar-cli -- api-spec > api/openapi.yaml
 cd radar-ui && npm install && npm run gen:api && cd ..
 
-# 2. API + dashboard (el binario sirve la UI en / si existe radar-ui/dist)
+# 2. Construir la UI antes del binario, que la incluye desde radar-ui/dist
+cd radar-ui && npm ci && npm run build && cd ..
+# 3. API + dashboard
 cargo run -p radar-cli -- serve --puerto 7800
 # o en dos terminales, con hot-reload de la UI:
 #   cargo run -p radar-cli -- serve --puerto 7800
 #   cd radar-ui && npm run dev        # http://127.0.0.1:5173 (proxy a :7800)
 
 # 3. Probar login (sin SMTP configurado, el código sale en el log del servidor)
-# 4. Lanzar búsquedas desde la web (pestaña "Búsquedas") o por CLI:
+# 4. Lanzar búsquedas de toda Navarra desde la web (pestaña "Buscar empresas")
+#    Para scans puntuales por CLI:
 cargo run -p radar-cli -- scan --municipio Pamplona --sector hosteleria
 cargo run -p radar-cli -- audit --prioridad A
 cargo run -p radar-cli -- export --formato csv --prioridad A
@@ -53,6 +58,15 @@ Rust define el contrato con `utoipa` y lo sirve en `/openapi.json`; `radar api-s
 genera `api/openapi.yaml`; `npm run gen:api` (openapi-typescript) genera
 `radar-ui/src/api/schema.ts` y la UI consume la API con `openapi-fetch` tipado.
 Las búsquedas se ejecutan desde la web vía `POST /api/jobs/scan|audit|watch` (ADR-002).
+
+## Copias y recuperación
+
+El servidor crea una copia SQLite diaria antes de aplicar migraciones y conserva las últimas
+14 copias en `backups/` junto a la base (o en `RADAR_BACKUP_DIR`). Para guardar una copia
+fuera del servidor, detén Radar y copia la base junto con la carpeta de copias. Para restaurar,
+detén el servicio, conserva la base actual con otro nombre, copia el fichero
+`radar-AAAA-MM-DD.sqlite` sobre la ruta configurada en `--db` y vuelve a iniciar el servicio.
+Comprueba el estado de los jobs y el panel antes de reanudar trabajo.
 
 ## Acceso del equipo (ADR-005)
 
@@ -80,3 +94,9 @@ Reglas en [tasks/README.md](tasks/README.md). Una tarea por archivo en `tasks/`,
 ```bash
 scripts/ci-local.sh    # tasks validate + cargo check + drift OAS + gen:api + npm build
 ```
+
+### Webs sugeridas y auditoría técnica
+
+La ficha incorpora descubrimiento de webs, correcciones con procedencia y la pestaña Auditoría con Lighthouse 13.6.0 y SiteOne 2.5.1, independientes en móvil y escritorio. [Uso, instalación del worker, límites y recuperación](docs/webs-y-auditoria-tecnica.md). Sin clave Tavily siguen disponibles las fuentes públicas y la corrección manual.
+
+La búsqueda regional clasifica además rubros comerciales detallados y muestra cobertura por rubro. Los objetivos de nombres concretos se mantienen en [`data/objetivos.csv`](data/objetivos.csv); se pueden incorporar y revisar con `radar targets --csv data/objetivos.csv` y `radar targets`.

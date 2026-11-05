@@ -64,7 +64,9 @@ fn jwt_secret(st: &AppState) -> String {
     if let Ok(Some(s)) = store::meta_get(&conn, "jwt_secret") {
         return s;
     }
-    let secret: String = (0..32).map(|_| format!("{:02x}", rand::thread_rng().gen::<u8>())).collect();
+    let secret: String = (0..32)
+        .map(|_| format!("{:02x}", rand::thread_rng().gen::<u8>()))
+        .collect();
     let _ = store::meta_set(&conn, "jwt_secret", &secret);
     secret
 }
@@ -85,20 +87,32 @@ fn emitir_sesion(st: &AppState, email: &str) -> Result<(String, String), ApiErro
         iat: ahora,
         exp: ahora + SESSION_TTL_SECS as usize,
     };
-    let token = encode(&Header::default(), &claims, &EncodingKey::from_secret(secret.as_bytes()))
-        .map_err(|e| ApiError(StatusCode::INTERNAL_SERVER_ERROR, format!("{e:#}")))?;
+    let token = encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_bytes()),
+    )
+    .map_err(|e| ApiError(StatusCode::INTERNAL_SERVER_ERROR, format!("{e:#}")))?;
     Ok((token, expira))
 }
 
 fn extraer_token(req: &Request) -> Option<String> {
     // 1) Authorization: Bearer <jwt>
-    if let Some(h) = req.headers().get(header::AUTHORIZATION).and_then(|v| v.to_str().ok()) {
+    if let Some(h) = req
+        .headers()
+        .get(header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+    {
         if let Some(t) = h.strip_prefix("Bearer ") {
             return Some(t.trim().to_string());
         }
     }
     // 2) cookie radar_session
-    if let Some(c) = req.headers().get(header::COOKIE).and_then(|v| v.to_str().ok()) {
+    if let Some(c) = req
+        .headers()
+        .get(header::COOKIE)
+        .and_then(|v| v.to_str().ok())
+    {
         for par in c.split(';') {
             let par = par.trim();
             if let Some(v) = par.strip_prefix(&format!("{SESSION_COOKIE}=")) {
@@ -111,11 +125,18 @@ fn extraer_token(req: &Request) -> Option<String> {
 
 pub fn validar_token(st: &AppState, token: &str) -> Option<AuthUser> {
     let secret = jwt_secret(st);
-    let datos = decode::<Claims>(token, &DecodingKey::from_secret(secret.as_bytes()), &Validation::default()).ok()?;
+    let datos = decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &Validation::default(),
+    )
+    .ok()?;
     let claims = datos.claims;
     let conn = st.store.lock().unwrap();
     let (email, expira) = store::get_sesion(&conn, &claims.jti).ok()??;
-    let exp = chrono::DateTime::parse_from_rfc3339(&expira).ok()?.with_timezone(&chrono::Local);
+    let exp = chrono::DateTime::parse_from_rfc3339(&expira)
+        .ok()?
+        .with_timezone(&chrono::Local);
     if exp < chrono::Local::now() {
         return None;
     }
@@ -123,14 +144,21 @@ pub fn validar_token(st: &AppState, token: &str) -> Option<AuthUser> {
 }
 
 /// Middleware: exige sesión válida en /api/* (salvo /api/auth/*).
-pub async fn require_auth(State(st): State<AppState>, mut req: Request, next: Next) -> Result<Response, ApiError> {
+pub async fn require_auth(
+    State(st): State<AppState>,
+    mut req: Request,
+    next: Next,
+) -> Result<Response, ApiError> {
     let token = extraer_token(&req);
     match token.as_deref().and_then(|t| validar_token(&st, t)) {
         Some(user) => {
             req.extensions_mut().insert(user);
             Ok(next.run(req).await)
         }
-        None => Err(ApiError(StatusCode::UNAUTHORIZED, "sesión no válida o expirada".into())),
+        None => Err(ApiError(
+            StatusCode::UNAUTHORIZED,
+            "sesión no válida o expirada".into(),
+        )),
     }
 }
 
@@ -141,7 +169,10 @@ async fn enviar_codigo(st: &AppState, email: &str, code: &str) -> Result<(), Str
         println!("[DEV] código de acceso para {email}: {code}");
         return Ok(());
     }
-    let port: u16 = std::env::var("RADAR_SMTP_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(587);
+    let port: u16 = std::env::var("RADAR_SMTP_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(587);
     let user = std::env::var("RADAR_SMTP_USER").unwrap_or_default();
     let pass = std::env::var("RADAR_SMTP_PASS").unwrap_or_default();
     let from_addr = std::env::var("RADAR_SMTP_FROM").unwrap_or_else(|_| user.clone());
@@ -151,13 +182,17 @@ async fn enviar_codigo(st: &AppState, email: &str, code: &str) -> Result<(), Str
         lettre::AsyncSmtpTransport::<lettre::Tokio1Executor>::relay(&host)
             .map_err(|e| e.to_string())?
             .port(465)
-            .credentials(lettre::transport::smtp::authentication::Credentials::new(user, pass))
+            .credentials(lettre::transport::smtp::authentication::Credentials::new(
+                user, pass,
+            ))
             .build()
     } else {
         lettre::AsyncSmtpTransport::<lettre::Tokio1Executor>::starttls_relay(&host)
             .map_err(|e| e.to_string())?
             .port(port)
-            .credentials(lettre::transport::smtp::authentication::Credentials::new(user, pass))
+            .credentials(lettre::transport::smtp::authentication::Credentials::new(
+                user, pass,
+            ))
             .build()
     };
 
@@ -170,7 +205,10 @@ async fn enviar_codigo(st: &AppState, email: &str, code: &str) -> Result<(), Str
         ))
         .map_err(|e| e.to_string())?;
     let _ = st;
-    transport.send(msg).await.map_err(|e| format!("SMTP: {e}"))?;
+    transport
+        .send(msg)
+        .await
+        .map_err(|e| format!("SMTP: {e}"))?;
     Ok(())
 }
 
@@ -184,9 +222,14 @@ async fn enviar_codigo(st: &AppState, email: &str, code: &str) -> Result<(), Str
         (status = 429, description = "Demasiados intentos", body = ErrorApi)
     )
 )]
-pub async fn request_code(State(st): State<AppState>, Json(req): Json<AuthRequest>) -> Result<Json<MensajeOk>, ApiError> {
+pub async fn request_code(
+    State(st): State<AppState>,
+    Json(req): Json<AuthRequest>,
+) -> Result<Json<MensajeOk>, ApiError> {
     let email = req.email.trim().to_lowercase();
-    let generic = Json(MensajeOk { message: "Si el email está autorizado, recibirás un código de acceso.".into() });
+    let generic = Json(MensajeOk {
+        message: "Si el email está autorizado, recibirás un código de acceso.".into(),
+    });
     if !email_autorizado(&email) {
         return Ok(generic);
     }
@@ -195,7 +238,10 @@ pub async fn request_code(State(st): State<AppState>, Json(req): Json<AuthReques
         let recientes = store::count_auth_codes_recientes(&conn, &email, 3600)
             .map_err(|e| ApiError(StatusCode::INTERNAL_SERVER_ERROR, format!("{e:#}")))?;
         if recientes >= MAX_CODES_POR_HORA {
-            return Err(ApiError(StatusCode::TOO_MANY_REQUESTS, "Demasiados códigos solicitados; espera un rato.".into()));
+            return Err(ApiError(
+                StatusCode::TOO_MANY_REQUESTS,
+                "Demasiados códigos solicitados; espera un rato.".into(),
+            ));
         }
         let code = format!("{:06}", rand::thread_rng().gen_range(0..1_000_000u32));
         let hash = sha256_hex(&code);
@@ -206,7 +252,10 @@ pub async fn request_code(State(st): State<AppState>, Json(req): Json<AuthReques
     };
     if let Err(e) = enviar_codigo(&st, &email, &code).await {
         eprintln!("error enviando código a {email}: {e}");
-        return Err(ApiError(StatusCode::INTERNAL_SERVER_ERROR, "No se pudo enviar el email de acceso.".into()));
+        return Err(ApiError(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "No se pudo enviar el email de acceso.".into(),
+        ));
     }
     Ok(generic)
 }
@@ -221,18 +270,31 @@ pub async fn request_code(State(st): State<AppState>, Json(req): Json<AuthReques
         (status = 401, description = "Código incorrecto o caducado", body = ErrorApi)
     )
 )]
-pub async fn verify(State(st): State<AppState>, headers: HeaderMap, Json(req): Json<AuthVerify>) -> Result<Response, ApiError> {
+pub async fn verify(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Json(req): Json<AuthVerify>,
+) -> Result<Response, ApiError> {
     let email = req.email.trim().to_lowercase();
     let ok = {
         let conn = st.store.lock().unwrap();
-        store::validar_auth_code(&conn, &email, &sha256_hex(&req.code)).map_err(|e| ApiError(StatusCode::INTERNAL_SERVER_ERROR, format!("{e:#}")))?
+        store::validar_auth_code(&conn, &email, &sha256_hex(&req.code))
+            .map_err(|e| ApiError(StatusCode::INTERNAL_SERVER_ERROR, format!("{e:#}")))?
     };
     if !ok {
-        return Err(ApiError(StatusCode::UNAUTHORIZED, "Código incorrecto o caducado.".into()));
+        return Err(ApiError(
+            StatusCode::UNAUTHORIZED,
+            "Código incorrecto o caducado.".into(),
+        ));
     }
     let (token, expira) = emitir_sesion(&st, &email)?;
-    let https = headers.get("x-forwarded-proto").and_then(|v| v.to_str().ok()) == Some("https");
-    let mut cookie = format!("{SESSION_COOKIE}={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={SESSION_TTL_SECS}");
+    let https = headers
+        .get("x-forwarded-proto")
+        .and_then(|v| v.to_str().ok())
+        == Some("https");
+    let mut cookie = format!(
+        "{SESSION_COOKIE}={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={SESSION_TTL_SECS}"
+    );
     if https {
         cookie.push_str("; Secure");
     }
@@ -241,7 +303,9 @@ pub async fn verify(State(st): State<AppState>, headers: HeaderMap, Json(req): J
         .status(StatusCode::OK)
         .header(header::SET_COOKIE, cookie)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(axum::body::Body::from(serde_json::to_string(&body.0).unwrap()))
+        .body(axum::body::Body::from(
+            serde_json::to_string(&body.0).unwrap(),
+        ))
         .unwrap())
 }
 
@@ -256,7 +320,10 @@ pub async fn verify(State(st): State<AppState>, headers: HeaderMap, Json(req): J
 )]
 pub async fn me(Extension(user): Extension<AuthUser>) -> Json<AuthMe> {
     let conn_expira = String::new();
-    Json(AuthMe { email: user.email, expira: conn_expira })
+    Json(AuthMe {
+        email: user.email,
+        expira: conn_expira,
+    })
 }
 
 #[utoipa::path(
@@ -284,11 +351,16 @@ pub async fn logout(State(st): State<AppState>, req: Request) -> Result<Response
     }
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .header(header::SET_COOKIE, format!("{SESSION_COOKIE}=; Path=/; HttpOnly; Max-Age=0"))
+        .header(
+            header::SET_COOKIE,
+            format!("{SESSION_COOKIE}=; Path=/; HttpOnly; Max-Age=0"),
+        )
         .header(header::CONTENT_TYPE, "application/json")
         .body(axum::body::Body::from(
-            serde_json::to_string(&MensajeOk { message: "Sesión cerrada.".into() }).unwrap(),
+            serde_json::to_string(&MensajeOk {
+                message: "Sesión cerrada.".into(),
+            })
+            .unwrap(),
         ))
         .unwrap())
 }
-
