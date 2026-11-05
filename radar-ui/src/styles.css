@@ -373,13 +373,27 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .web-candidata { padding:12px; }
 .diagnostico-web { padding-top:8px; }
 .diagnostico-cabecera { display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap; }
-.diagnostico-cabecera > a { overflow-wrap:anywhere; }
-.diagnostico-resumen { display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px; }
-.diagnostico-resumen article { border:1px solid var(--borde);border-radius:8px;padding:12px; }
-.diagnostico-resumen article > strong,.diagnostico-resumen article > small { display:block;margin-bottom:6px; }
-.diagnostico-score-row { display:flex;flex-wrap:wrap;gap:6px;margin-top:8px; }
-.diagnostico-alcance { font-size:.88rem; }
+.diagnostico-cabecera { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center; }
+.diagnostico-cabecera h3 { margin:0; }
+.diagnostico-web-badge { grid-column:1/-1;display:inline-flex;align-items:center;gap:7px;width:fit-content;max-width:100%;padding:6px 10px;border:1px solid var(--borde);border-radius:999px;background:var(--panel);color:#304b3a;text-decoration:none;overflow-wrap:anywhere; }
+.diagnostico-web-badge:hover { background:#e9ece4; }
+.diagnostico-dispositivos { display:flex;gap:6px; }
+.diagnostico-resumen { display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px; }
+.diagnostico-resumen article { display:grid;gap:7px;border:1px solid var(--borde);border-top:3px solid #b68a2f;border-radius:12px;padding:12px;background:var(--panel); }
+.diagnostico-puntuacion > span { color:var(--muted);font-size:.88rem; }
+.diagnostico-puntuacion > strong { font-size:1.35rem;line-height:1.2; }
+.diagnostico-puntuacion-barra { height:6px;overflow:hidden;border-radius:999px;background:#e3e2d6; }
+.diagnostico-puntuacion-barra i { display:block;height:100%;border-radius:inherit;background:#b68a2f; }
+.diagnostico-puntuacion.puntuacion-alta { border-top-color:#588365; }
+.diagnostico-puntuacion.puntuacion-alta .diagnostico-puntuacion-barra i { background:#588365; }
+.diagnostico-puntuacion.puntuacion-baja { border-top-color:#bd6a50; }
+.diagnostico-puntuacion.puntuacion-baja .diagnostico-puntuacion-barra i { background:#bd6a50; }
+.diagnostico-estado { margin:6px 0 10px; }
 .diagnostico-grupo { margin:18px 0; }
+.diagnostico-grupo > summary { display:flex;align-items:center;gap:6px;min-height:44px;padding:8px 4px;border-bottom:1px solid var(--borde);cursor:pointer;list-style:none;font-weight:700; }
+.diagnostico-grupo > summary::-webkit-details-marker { display:none; }
+.diagnostico-grupo > summary::after { content:"⌄";margin-left:auto;color:var(--muted); }
+.diagnostico-grupo[open] > summary::after { content:"⌃"; }
 .diagnostico-hallazgo { border:1px solid var(--borde);border-radius:8px;padding:12px;margin:8px 0; }
 .diagnostico-hallazgo > div { display:flex;align-items:center;justify-content:space-between;gap:8px; }
 .diagnostico-hallazgo > p { margin:8px 0; }
@@ -467,7 +481,7 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 /* Presentación del negocio y diagnóstico para móvil y tablet. */
 .nav-inferior { display:none; }
 .diagnostico-resumen article { background:linear-gradient(145deg,var(--panel),#f0f0e7);box-shadow:0 5px 18px #1e24280a; }
-.diagnostico-resumen article > strong { font-size:1.02rem; }
+.diagnostico-puntuacion > strong { font-size:1.35rem; }
 .diagnostico-score-row .badge { padding:6px 9px;border:1px solid var(--borde);background:var(--fondo);color:var(--texto); }
 .diagnostico-hallazgo { padding:16px;border-radius:12px;background:var(--panel);box-shadow:0 4px 16px #1e242808; }
 .diagnostico-hallazgo-cabecera { display:flex;align-items:flex-start;justify-content:space-between;gap:12px; }

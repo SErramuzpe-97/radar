@@ -448,12 +448,18 @@ pub fn sync_pinned_captures(
         .collect();
     let dir = technical::directory().join("artifacts");
     let pinned = dir.join("pinned");
-    fs::create_dir_all(&pinned)?;
+    let created_pinned = match fs::create_dir(&pinned) {
+        Ok(()) => true,
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => false,
+        Err(error) => return Err(error.into()),
+    };
     #[cfg(unix)]
-    {
+    if created_pinned {
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(&pinned, fs::Permissions::from_mode(0o770))?;
     }
+    #[cfg(not(unix))]
+    let _ = created_pinned;
     let previous_catalog = previous["catalogo"].as_array().cloned().unwrap_or_default();
     for mark in previous["capturas"].as_array().into_iter().flatten() {
         let Some(capture_id) = mark["capture_id"].as_str() else {
