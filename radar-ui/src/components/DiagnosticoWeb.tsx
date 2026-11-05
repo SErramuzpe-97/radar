@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "preact/hooks";
-import { consultarAuditoria, consultarRevisionHallazgo, guardarRevisionHallazgo } from "../stores/webs";
+import { consultarAuditoria, consultarRevisionHallazgo, consultarVisitaDiagnostico, guardarRevisionHallazgo } from "../stores/webs";
+import { authHeaders } from "../api/client";
 import { VisitaDiagnostico } from "./VisitaDiagnostico";
 import type { components } from "../api/schema";
 import { categoriaEs, errorAuditoriaEs, estadoAuditoriaEs, gravedadEs, traducirHallazgo } from "../diagnostico-es";
@@ -129,14 +130,35 @@ export function DiagnosticoWeb({ id, web, name }: { id: number; web?: string | n
 
   const exportDossier = async (print = false) => {
     try {
-      const chosen = findings.filter(item => selected.includes(issueKey(item))).slice(0, 5);
-      if (!chosen.length) throw new Error("Selecciona al menos un hallazgo para el dossier.");
-      const cards = chosen.map(item => {
-        const translated = traducirHallazgo(item);
-        return `<article><h3>${esc(translated.titulo)}</h3><p><b>Prioridad:</b> ${esc(gravedadEs(item.severity))} · <b>Categoría:</b> ${esc(categoriaEs(item.category))}</p><p>${esc(translated.explicacion)}</p><p><b>Siguiente paso:</b> ${esc(translated.siguientePaso)}</p><small>${esc(item.url || web)} · ${esc(motorNombre(item._motor))} / ${esc(item._device === "mobile" ? "móvil" : "escritorio")}</small><details><summary>Ver detalle técnico original</summary><p>${esc(translated.original)}</p><p>${esc(item.details || "")}</p><p>${esc(item.recommendation || "")}</p></details></article>`;
+      if (!deviceReports.length) throw new Error("Todavía no hay informes para generar el diagnóstico.");
+      const visit = await consultarVisitaDiagnostico(id);
+      const chosenCaptures = (visit.capturas ?? []).filter(mark => mark.estado === "conservar").sort((a, b) => a.orden - b.orden);
+      const captureHtml = await Promise.all(chosenCaptures.map(async mark => {
+        const capture = visit.catalogo?.find(item => item.capture_id === mark.capture_id);
+        if (!capture) return "";
+        try {
+          const response = await fetch(`/api/auditorias-tecnicas/${encodeURIComponent(capture.report_id)}/archivo/${encodeURIComponent(capture.key)}`, { headers: authHeaders(), credentials: "same-origin" });
+          if (!response.ok) throw new Error();
+          const image = `data:image/png;base64,${await base64(await response.blob())}`;
+          const pin = mark.punto_x != null ? `<span class="pin" style="left:${mark.punto_x}%;top:${mark.punto_y ?? 0}%">1</span>` : "";
+          return `<article class="captura"><figure><div class="captura-imagen"><img src="${image}" alt="Captura de ${esc(capture.page)} a ${capture.width}px">${pin}</div><figcaption>${esc(capture.page)} · ${capture.width}px</figcaption></figure><div><h3>${esc(mark.titulo || capture.page)}</h3><p><b>Qué se ve:</b> ${esc(mark.que)}</p><p><b>Qué puede dificultar:</b> ${esc(mark.impacto)}</p><p><b>Qué proponemos:</b> ${esc(mark.propuesta)}</p></div></article>`;
+        } catch {
+          return `<p class="aviso">La captura seleccionada (${esc(mark.titulo || capture.page)}) ya no está disponible.</p>`;
+        }
+      })).then(items => items.join(""));
+      const scores = categoryScores.map(score => `<article class="nota"><span>${esc(categoriaEs(score.category))}</span><strong>${score.value}/100</strong><i><b style="width:${score.value}%"></b></i></article>`).join("");
+      const reportSummary = deviceReports.map(report => {
+        const result = report.resultado as any;
+        const coverage = result?.coverage ?? {};
+        return `<article class="informe-meta"><h3>${esc(motorNombre(report.motor))} · ${device === "mobile" ? "Móvil" : "Escritorio"}</h3><p>${esc(estadoAuditoriaEs(report.estado))} · ${esc(new Date(report.fecha).toLocaleString("es-ES"))} · versión ${esc(report.version || "—")}</p><p>Alcance: ${esc(coverage.html_pages ?? coverage.visited ?? 0)} páginas HTML · ${esc(coverage.rendered_pages ?? 0)} páginas renderizadas${coverage.blocked ? ` · ${esc(coverage.blocked)} no accesibles` : ""}${coverage.omitted ? ` · ${esc(coverage.omitted)} omitidas` : ""}</p>${(result?.warnings ?? []).length ? `<p>Avisos: ${esc(result.warnings.join(" · "))}</p>` : ""}</article>`;
       }).join("");
+      const categories = Array.from(groups.entries()).map(([category, items]) => `<section class="grupo"><h2>${esc(categoriaEs(category))} <span>(${items.length})</span></h2>${items.map(item => {
+        const translated = traducirHallazgo(item);
+        const review = reviews[item._reportId + "|" + issueKey(item)] || { estado: "pendiente" };
+        return `<article class="hallazgo"><header><h3>${esc(translated.titulo)}</h3><span>${esc(gravedadEs(item.severity))}</span></header><p><b>Prioridad:</b> ${esc(gravedadEs(item.severity))} · <b>Categoría:</b> ${esc(categoriaEs(item.category))}</p><p>${esc(translated.explicacion)}</p><p><b>Siguiente paso:</b> ${esc(translated.siguientePaso)}</p><p><b>Revisión:</b> ${esc(REVISION_ES[review.estado] || "Pendiente de contraste")}${review.motivo ? ` · ${esc(review.motivo)}` : ""}</p><small>${esc(item.url || web)} · ${esc(motorNombre(item._motor))} / ${esc(item._device === "mobile" ? "móvil" : "escritorio")}</small><details><summary>Detalle técnico</summary><p>${esc(translated.original)}</p>${item.details ? `<p>${esc(item.details)}</p>` : ""}${item.recommendation ? `<p>${esc(item.recommendation)}</p>` : ""}</details></article>`;
+      }).join("")}</section>`).join("");
       const font = "data:font/woff2;base64," + await base64(await (await fetch("/fonts/albert-sans.woff2")).blob());
-      const html = `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Diagnóstico web · ${esc(name)}</title><style>@font-face{font-family:Albert Sans;src:url("${font}")}body{font:16px/1.5 Albert Sans,Arial,sans-serif;color:#1e2428;background:#f6f5ec;max-width:900px;margin:32px auto;padding:0 20px}header{border-bottom:2px solid #9ca59e;padding-bottom:18px}h1{font-size:2rem}article{border:1px solid #d2d3c3;border-radius:10px;padding:16px;margin:16px 0;background:#fbfaf3;break-inside:avoid}small,.muted{color:#414d4d}figure{margin:0}img{max-height:560px;max-width:260px;border:1px solid #d2d3c3}figcaption{font-size:.85rem;color:#414d4d;text-align:center}@media print{body{margin:10mm auto}a{color:inherit}}</style><body><header><p>Radar Navarra · Diagnóstico web</p><h1>${esc(name)}</h1><p><a href="${esc(web)}">${esc(web)}</a></p><p>Generado ${new Date().toLocaleString("es-ES")} · ${esc(deviceReports.length)} informes disponibles · ${chosen.length} hallazgos seleccionados</p></header><h2>Hallazgos para revisar</h2>${cards}<h2>Capturas para enseñar</h2><p class="muted">La presentación descargable incluye las pruebas visuales que hayas conservado en Preparar visita.</p><footer><p>Documento de trabajo; no es una certificación de accesibilidad, posicionamiento ni resultados comerciales. Alcance limitado a las páginas y perfiles registrados en Radar.</p></footer></body></html>`;
+      const html = `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Diagnóstico web · ${esc(name)}</title><style>@font-face{font-family:Albert Sans;src:url("${font}")}*{box-sizing:border-box}body{font:15px/1.5 Albert Sans,Arial,sans-serif;color:#1e2428;background:#f6f5ec;max-width:1000px;margin:24px auto;padding:0 22px}header{border-bottom:2px solid #9ca59e;padding-bottom:16px}h1{font-size:2rem;margin:4px 0}h2{margin:24px 0 10px}.url{overflow-wrap:anywhere}.notas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0}.nota,.informe-meta,.hallazgo,.captura{border:1px solid #d2d3c3;border-radius:10px;padding:14px;background:#fbfaf3;break-inside:avoid}.nota span,.nota strong{display:block}.nota strong{font-size:1.35rem}.nota i,.nota i b{display:block;height:6px;border-radius:99px}.nota i{margin-top:8px;background:#e3e2d6}.nota i b{background:#588365}.informe-meta{margin:8px 0}.informe-meta h3{margin:0}.grupo{break-inside:auto}.grupo>h2{border-bottom:1px solid #d2d3c3;padding-bottom:6px}.grupo>h2 span,small{color:#414d4d}.hallazgo{margin:10px 0}.hallazgo header{display:flex;justify-content:space-between;align-items:start;gap:12px;border:0;padding:0}.hallazgo h3{margin:0}.hallazgo header span{padding:2px 8px;border-radius:99px;background:#e3e2d6}.hallazgo small{overflow-wrap:anywhere}.captura{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(220px,1fr);gap:18px;margin:10px 0}.captura figure{margin:0;text-align:center}.captura-imagen{position:relative}.captura img{max-width:100%;max-height:620px;border:1px solid #d2d3c3;object-fit:contain}.captura figcaption{font-size:.85rem;overflow-wrap:anywhere}.pin{position:absolute;display:grid;place-items:center;width:32px;height:32px;transform:translate(-50%,-50%);border:3px solid #fff;border-radius:50%;background:#1e2428;color:#fff;font-weight:700}.aviso{color:#795800}@media(max-width:650px){body{padding:0 12px}.captura{grid-template-columns:1fr}}@media print{body{margin:0 auto;background:white}.notas{grid-template-columns:repeat(2,minmax(0,1fr))}.grupo{break-inside:auto}a{color:inherit}}</style><body><header><p>Radar Navarra · Diagnóstico web completo</p><h1>${esc(name)}</h1><p class="url"><a href="${esc(web)}">${esc(web)}</a></p><p>Dispositivo: ${device === "mobile" ? "Móvil" : "Escritorio"} · Generado ${new Date().toLocaleString("es-ES")} · ${findings.length} hallazgos · ${chosenCaptures.length} capturas seleccionadas</p></header><h2>Notas más bajas por categoría</h2><section class="notas">${scores || "<p>No hay puntuaciones disponibles.</p>"}</section><h2>Informes y cobertura</h2>${reportSummary}<h2>Capturas seleccionadas</h2>${captureHtml || "<p>No hay capturas seleccionadas para enseñar.</p>"}<h2>Hallazgos completos</h2>${categories || "<p>No se detectaron hallazgos en los informes disponibles.</p>"}<footer><p>Diagnóstico de laboratorio para revisión. Los resultados dependen de las páginas y perfiles medidos.</p></footer></body></html>`;
       if (print) {
         const win = window.open("", "_blank");
         if (!win) throw new Error("El navegador bloqueó la ventana de impresión. Permite ventanas emergentes para Radar.");
@@ -180,8 +202,8 @@ export function DiagnosticoWeb({ id, web, name }: { id: number; web?: string | n
       </div>
       <VisitaDiagnostico id={id} name={name} web={web} />
       <div class="acciones diagnostico-export">
-        <button disabled={!findings.length || !selected.length} onClick={() => void exportDossier()}>Descargar selección de hallazgos HTML</button>
-        <button class="secundario" disabled={!findings.length || !selected.length} onClick={() => void exportDossier(true)}>Imprimir / guardar PDF</button>
+        <button disabled={!deviceReports.length} onClick={() => void exportDossier()}>Descargar diagnóstico en HTML</button>
+        <button class="secundario" disabled={!deviceReports.length} onClick={() => void exportDossier(true)}>Imprimir / guardar PDF</button>
       </div>
       {findings.length ? Array.from(groups.entries()).map(([category, items]) => <section class="diagnostico-grupo" key={category}>
         <button type="button" class="diagnostico-grupo-titulo" aria-expanded={Boolean(openGroups[category])} aria-controls={`hallazgos-${id}-${category}`} onClick={() => setOpenGroups(current => ({ ...current, [category]: !current[category] }))}>

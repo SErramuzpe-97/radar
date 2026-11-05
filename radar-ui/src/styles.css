@@ -209,6 +209,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .visita-toolbar { display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap; }
 .visita-toolbar > div:first-child strong,.visita-toolbar small { display:block; }
 .visita-toolbar small { color:var(--muted); }
+.visita-seleccionadas { display:flex;gap:8px;margin-top:12px;padding:2px 0 8px;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-gutter:stable; }
+.visita-miniatura-compacta { flex:0 0 116px;width:116px;min-height:82px;height:82px;padding:6px;font-size:.76rem; }
+.visita-miniatura-compacta > span:last-child { max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.visita-panel-animado { display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .3s ease,opacity .22s ease; }
+.visita-panel-animado.abierto { grid-template-rows:1fr;opacity:1; }
+.visita-panel-contenido { min-height:0;overflow:hidden; }
+.visita-preparacion-acciones { justify-content:flex-end;margin-top:12px; }
+.visita-lista-animada { animation:visita-lista-entrada .24s ease both; }
+@keyframes visita-lista-entrada { from { opacity:0;transform:translateY(-5px); } to { opacity:1;transform:translateY(0); } }
 .visita-filtros { display:flex;gap:8px;flex-wrap:wrap;margin:14px 0; }
 .visita-biblioteca { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:12px; }
 .visita-captura { display:grid;grid-template-columns:minmax(120px,34%) minmax(0,1fr);gap:12px;padding:12px;border:1px solid var(--borde);border-radius:10px;background:#fffefa; }
@@ -218,6 +227,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .visita-miniatura img { position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top; }
 .visita-miniatura > span { position:relative;z-index:1;padding:2px 5px;border-radius:4px;background:#fbfaf3eF; }
 .visita-miniatura-cargando { margin:auto; }
+@media(prefers-reduced-motion:reduce) { .visita-panel-animado,.visita-lista-animada { transition:none;animation:none; } }
 .visita-captura-info { display:grid;align-content:start;gap:6px;min-width:0; }
 .visita-captura-info > small { color:var(--muted);font-size:.83rem; }
 .visita-captura-info label { display:grid;gap:3px;color:var(--muted);font-size:.86rem; }
@@ -444,6 +454,16 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .auditoria-motores,.auditoria-dispositivos { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 8px; }
 .auditoria-informe-tab { display:flex; flex:1 1 auto; flex-direction:column; min-height:0; overflow:hidden; }
 .auditoria-informe-tab .auditoria-dispositivos { flex:0 0 auto; margin:0 0 8px; }
+.auditoria-aparte-app { display:flex;flex-direction:column;height:100dvh;overflow:hidden; }
+.informe-aparte-topbar { flex:0 0 auto;padding-right:24px;padding-left:24px; }
+.informe-aparte-topbar > button { min-height:42px; }
+.informe-aparte-main { flex:1 1 auto;min-height:0;overflow:auto;padding:0 24px 24px;scrollbar-gutter:stable; }
+.informe-aparte { width:min(100%,1000px);margin:0 auto;padding:14px 0 32px; }
+.informe-aparte-cabecera { display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 14px; }
+.informe-aparte-cabecera h1 { margin:2px 0;font-size:1.35rem; }
+.informe-aparte-cabecera .auditoria-dispositivos { flex:0 0 auto;margin:0; }
+.informe-aparte .informe-espanol { flex:none;min-height:auto;overflow:visible; }
+.informe-aparte-volver { margin-top:20px; }
 .auditoria-aviso-idioma { flex:0 0 auto; margin:0 0 6px; }
 .informe-html { display:flex; flex:1 1 auto; flex-direction:column; min-height:0; gap:6px; overflow:hidden; }
 .informe-html-cabecera { display:flex; flex:0 0 auto; justify-content:space-between; align-items:center; gap:8px; min-height:34px; }
@@ -621,4 +641,11 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
   .informe-original-detalle .informe-html { min-height:45vh; }
   .informe-original-detalle .informe-html iframe { min-height:36vh; }
   .ficha-contenido.informe-activo { padding-top:4px;padding-right:8px;padding-left:8px; }
+}
+
+@media(max-width:600px) {
+  .informe-aparte-topbar { padding-right:16px;padding-left:16px; }
+  .informe-aparte-main { padding-right:16px;padding-left:16px; }
+  .informe-aparte-cabecera { align-items:flex-start;flex-direction:column;gap:8px; }
+  .informe-aparte-cabecera .auditoria-dispositivos { margin:0; }
 }

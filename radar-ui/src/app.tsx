@@ -11,11 +11,18 @@ import { RutaDia } from "./components/RutaDia";
 import { PanelStats } from "./components/PanelStats";
 import { PanelFuentes } from "./components/PanelFuentes";
 import { PanelSeguimiento } from "./components/PanelSeguimiento";
+import { AuditoriaInformeAparte } from "./components/AuditoriaTecnica";
 
 type Vista = "tabla" | "mapa" | "ruta" | "stats" | "jobs" | "fuentes" | "seguimiento";
 
+function rutaAuditoriaAparte() {
+  const match = window.location.pathname.match(/^\/auditoria-tecnica\/(\d+)\/(lighthouse|siteone)\/(mobile|desktop)\/?$/);
+  return match ? { id: Number(match[1]), engine: match[2] as "lighthouse" | "siteone", device: match[3] as "mobile" | "desktop" } : null;
+}
+
 export function App() {
   const [vista, setVista] = useState<Vista>("tabla");
+  const informeAparte = rutaAuditoriaAparte();
   const negocioAbierto = Boolean(detalle.value) && (vista === "tabla" || vista === "mapa");
 
   useEffect(() => {
@@ -24,12 +31,17 @@ export function App() {
 
   useEffect(() => {
     if (!autenticado.value) return;
+    if (informeAparte) return;
     recargar();
     recargarStats();
     iniciarPolling();
   }, [autenticado.value]);
 
   if (!autenticado.value) return <Login />;
+  if (informeAparte) return <div class="app auditoria-aparte-app">
+    <header class="topbar informe-aparte-topbar"><button type="button" class="secundario" onClick={() => history.length > 1 ? history.back() : window.location.assign("/")}>← Volver a Radar Navarra</button><strong>Radar Navarra</strong></header>
+    <main class="informe-aparte-main"><AuditoriaInformeAparte id={informeAparte.id} engine={informeAparte.engine} initialDevice={informeAparte.device}/></main>
+  </div>;
 
   return (
     <div class={`app ${negocioAbierto ? "negocio-abierto" : ""}`}>

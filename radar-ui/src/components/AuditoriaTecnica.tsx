@@ -117,3 +117,20 @@ export function AuditoriaTecnica({id,web,mode,onAvailabilityChange}:{id:number;w
   <p class="muted">Las webs propias confirmadas se revisan automáticamente cada 24 horas. Los resultados presentados por Radar están en español; los informes originales se conservan como referencia técnica.</p>
  </section>;
 }
+
+export function AuditoriaInformeAparte({id,engine,initialDevice}:{id:number;engine:Engine;initialDevice:'mobile'|'desktop'}){
+ const [data,setData]=useState<Estado|null>(null),[device,setDevice]=useState<'mobile'|'desktop'>(initialDevice),[loading,setLoading]=useState(true),[error,setError]=useState('');
+ useEffect(()=>{let live=true;consultarAuditoria(id).then(result=>{if(live){setData(result);setLoading(false)}}).catch(problem=>{if(live){setError(errorAuditoriaEs(problem));setLoading(false)}});return()=>{live=false}},[id]);
+ const report=useMemo(()=>data?.informes.filter(item=>item.motor===engine&&item.dispositivo===device).sort((a,b)=>b.fecha.localeCompare(a.fecha))[0],[data,engine,device]);
+ useEffect(()=>{if(loading||!data||device!=='mobile')return;const mobile=data.informes.some(item=>item.motor===engine&&item.dispositivo==='mobile');const desktop=data.informes.some(item=>item.motor===engine&&item.dispositivo==='desktop');if(!mobile&&desktop){setDevice('desktop');history.replaceState(null,'',`/auditoria-tecnica/${id}/${engine}/desktop`)}},[loading,data,device,id,engine]);
+ const changeDevice=(next:'mobile'|'desktop')=>{setDevice(next);history.replaceState(null,'',`/auditoria-tecnica/${id}/${engine}/${next}`)};
+ const back=()=>{if(history.length>1)history.back();else window.location.assign('/')};
+ return <section class="informe-aparte">
+  <header class="informe-aparte-cabecera">
+   <div><span class="informe-eyebrow">{engine==='lighthouse'?'Lighthouse':'SiteOne'}</span><h1>Informe técnico</h1></div>
+   <div class="auditoria-dispositivos" role="tablist" aria-label="Dispositivo del informe">{dispositivos.map(([value,label])=><button type="button" key={value} role="tab" aria-selected={device===value} class={device===value?'':'secundario'} onClick={()=>changeDevice(value)}>{label}</button>)}</div>
+  </header>
+  {loading?<div class="informe-cargando muted">Cargando informe…</div>:error?<p class="error">{error}</p>:report?<InformeEspanol key={report.id} report={report}/>:<p class="diagnostico-vacio muted">No hay un informe de {engine==='lighthouse'?'Lighthouse':'SiteOne'} para {device==='mobile'?'móvil':'escritorio'}.</p>}
+  <button type="button" class="informe-aparte-volver secundario" onClick={back}>← Volver a Radar Navarra</button>
+ </section>;
+}
