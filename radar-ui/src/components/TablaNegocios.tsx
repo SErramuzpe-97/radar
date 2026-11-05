@@ -1,7 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { filtros, pagina, cargando, error, recargar, programarRecarga, cancelarCargaLista, cargarDetalle, seleccionadoId, actualizarDescartados } from "../stores/negocios";
 import { RUBROS, TIPOS_ENTIDAD, rubroNombre } from "../rubros";
-import { Desplegable } from "./Desplegable";
+import { ChevronHorizontal, Desplegable } from "./Desplegable";
 
 const SECTORES = ["", "hosteleria", "comercio", "servicios", "profesionales", "industria"];
 const ESTADOS = ["", "CON_WEB", "SIN_WEB", "SOLO_REDES", "WEB_ROTA", "WEB_APARCADA", "WEB_OBSOLETA", "WEB_MEJORABLE", "WEB_OK"];
@@ -145,11 +145,11 @@ export function TablaNegocios() {
 
       {p && (
         <div class="paginacion">
-          <button disabled={f.pagina <= 1} onClick={() => ((filtros.value = { ...filtros.value, pagina: f.pagina - 1 }), recargar())}>←</button>
+          <button aria-label="Página anterior" title="Página anterior" disabled={f.pagina <= 1} onClick={() => ((filtros.value = { ...filtros.value, pagina: f.pagina - 1 }), recargar())}><ChevronHorizontal direccion="izquierda" /></button>
           <span>
             Página {p.pagina} de {Math.max(1, Math.ceil(p.total / p.tam))} ({p.total} negocios)
           </span>
-          <button disabled={f.pagina * f.tam >= p.total} onClick={() => ((filtros.value = { ...filtros.value, pagina: f.pagina + 1 }), recargar())}>→</button>
+          <button aria-label="Página siguiente" title="Página siguiente" disabled={f.pagina * f.tam >= p.total} onClick={() => ((filtros.value = { ...filtros.value, pagina: f.pagina + 1 }), recargar())}><ChevronHorizontal direccion="derecha" /></button>
         </div>
       )}
       {cargando.value && <div class="tabla-estado" role="status" aria-live="polite"><span class="carga-spinner"/><span>Actualizando resultados…</span></div>}

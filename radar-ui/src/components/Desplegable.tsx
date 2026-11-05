@@ -5,6 +5,10 @@ export function Chevron() {
   return <svg class="desplegable-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>;
 }
 
+export function ChevronHorizontal({ direccion }: { direccion: "izquierda" | "derecha" }) {
+  return <svg class={`chevron-horizontal chevron-${direccion}`} viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>;
+}
+
 export function Desplegable({
   titulo,
   children,

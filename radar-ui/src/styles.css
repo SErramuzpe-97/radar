@@ -103,6 +103,8 @@ button.secundario { background: transparent; border: 1px solid var(--borde); col
 .acciones { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
 .paginacion { display: flex; align-items: center; justify-content:center; gap: 12px; margin-top: 12px; }
 .paginacion button { padding: 4px 10px; }
+.chevron-horizontal { display:inline-block;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle; }
+.chevron-izquierda { transform:rotate(180deg); }
 .prio-a { color: #67d391; font-weight: 700; }
 .prio-b { color: #e3b341; font-weight: 700; }
 .prio-c { color: var(--muted); }
@@ -266,6 +268,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .modo-visita-escena.ampliada .modo-visita-imagen-contenido { max-width:none;max-height:none; }
 .modo-visita-escena figcaption { color:var(--muted); }
 .modo-visita-flecha { width:52px;height:56px;padding:0;border-radius:10px;font-size:2rem; }
+.modo-visita-flecha .chevron-horizontal { width:30px;height:30px; }
 .modo-visita-pie { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:18px;max-height:28dvh;overflow:auto;padding:12px 4px calc(env(safe-area-inset-bottom) + 2px);border-top:1px solid var(--borde);background:var(--fondo); }
 .modo-visita-pie > div:first-child { min-width:0;overflow-wrap:anywhere; }
 .modo-visita-textos { display:flex;gap:16px;flex-wrap:wrap; }
@@ -293,7 +296,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
  .modo-visita-pie { grid-template-columns:1fr;max-height:34dvh;gap:8px; }
  .modo-visita-textos { display:block; }
  .modo-visita-controles { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px; }
- .modo-visita-controles button { min-width:0;padding:7px 6px;white-space:normal;overflow-wrap:anywhere;line-height:1.2; }
+ .modo-visita-controles button { min-width:0;padding:7px 6px;text-align:center;white-space:normal;overflow-wrap:anywhere;line-height:1.2; }
 }
 @media(max-height:520px) and (orientation:landscape) {
  .modo-visita { grid-template-rows:auto minmax(0,1fr) auto;gap:4px;padding-top:calc(env(safe-area-inset-top) + 4px);padding-bottom:calc(env(safe-area-inset-bottom) + 4px); }

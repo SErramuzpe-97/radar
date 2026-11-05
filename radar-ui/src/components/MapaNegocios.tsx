@@ -5,7 +5,7 @@ import { cargandoMapa, errorMapa, filtros, negociosMapa, recargarMapa, cargarDet
   cancelarCargaMapa, desactivarMapa, queryFiltrosMapa, cargarNegociosZona } from "../stores/negocios";
 import type { PuntoMapa, ZonaMapa, PaginaNegocios } from "../stores/negocios";
 import { RUBROS, TIPOS_ENTIDAD } from "../rubros";
-import { Desplegable } from "./Desplegable";
+import { ChevronHorizontal, Desplegable } from "./Desplegable";
 import { transicionar } from "../transicion";
 
 const SECTORES = ["", "hosteleria", "comercio", "servicios", "profesionales", "industria"];
@@ -201,7 +201,7 @@ function EmpresasZona({ zona, claveFiltros, cerrar }: { zona: ZonaMapa; claveFil
     {error && <p class="error" role="alert">{error}</p>}
     {datos && <>
       <div class="mapa-zona-lista">{datos.items.map((n) => <button key={n.id} class="secundario" onClick={() => void cargarDetalle(n.id)}>{n.nombre}<small>{n.municipio}{n.direccion ? ` · ${n.direccion}` : ""}</small></button>)}</div>
-      <div class="paginacion"><button class="secundario" disabled={numero <= 1} onClick={() => setNumero(numero - 1)}>Anterior</button><span>Página {numero} de {Math.max(1, Math.ceil(datos.total / datos.tam))}</span><button class="secundario" disabled={numero * datos.tam >= datos.total} onClick={() => setNumero(numero + 1)}>Siguiente</button></div>
+      <div class="paginacion"><button class="secundario" aria-label="Página anterior" title="Página anterior" disabled={numero <= 1} onClick={() => setNumero(numero - 1)}><ChevronHorizontal direccion="izquierda" /></button><span>Página {numero} de {Math.max(1, Math.ceil(datos.total / datos.tam))}</span><button class="secundario" aria-label="Página siguiente" title="Página siguiente" disabled={numero * datos.tam >= datos.total} onClick={() => setNumero(numero + 1)}><ChevronHorizontal direccion="derecha" /></button></div>
     </>}
   </div>;
 }
