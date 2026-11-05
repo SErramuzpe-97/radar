@@ -269,13 +269,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .modo-visita-escena figcaption { color:var(--muted); }
 .modo-visita-meta { display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:7px;margin-top:5px;text-align:center; }
 .modo-visita-meta-badge { display:inline-flex;align-items:center;min-height:26px;padding:2px 9px;border:1px solid var(--borde);border-radius:999px;background:var(--panel);color:var(--muted);font-size:.8rem;white-space:nowrap; }
-.modo-visita-flecha { width:56px;height:56px;padding:0;border-radius:12px;font-size:2rem; }
+.modo-visita-flecha { width:56px;height:56px;align-self:center;transform:translateY(-16px);padding:0;border-radius:12px;font-size:2rem; }
 .modo-visita-flecha .chevron-horizontal { width:30px;height:30px; }
 .modo-visita-pie { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:18px;max-height:28dvh;overflow:auto;padding:12px 4px calc(env(safe-area-inset-bottom) + 2px);border-top:1px solid var(--borde);background:var(--fondo); }
 .modo-visita-pie > div:first-child { min-width:0;overflow-wrap:anywhere; }
 .modo-visita-textos { display:flex;gap:16px;flex-wrap:wrap; }
 .modo-visita-textos p { max-width:34rem;margin:5px 0 0; }
-.modo-visita-controles { display:flex;flex-wrap:wrap;gap:8px;min-width:0; }
+.modo-visita-controles { display:flex;grid-column:1/-1;flex-wrap:wrap;justify-content:center;gap:8px;min-width:0; }
 .modo-visita-cargando { position:absolute;inset:0;display:grid;place-items:center;background:#f6f5ecc9;color:var(--texto);pointer-events:none; }
 
 @media(max-width:800px) {
