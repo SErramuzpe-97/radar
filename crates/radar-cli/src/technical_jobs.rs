@@ -260,7 +260,7 @@ pub fn start(st: AppState) {
                 let pause = std::env::var("RADAR_TECH_PAUSE_SECONDS")
                     .ok()
                     .and_then(|v| v.parse::<i64>().ok())
-                    .unwrap_or(15)
+                    .unwrap_or(0)
                     .max(0);
                 let c = st.store.lock().unwrap();
                 let _ = store::meta_set(

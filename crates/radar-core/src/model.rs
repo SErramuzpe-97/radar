@@ -235,7 +235,7 @@ pub struct FiltrosNegocios {
     pub sector: Option<String>,
     pub rubro: Option<String>,
     pub tipo_entidad: Option<String>,
-    pub estado_web: Option<EstadoWeb>,
+    pub estado_web: Option<String>,
     pub estado_auditoria_tecnica: Option<String>,
     pub estado_pipeline: Option<String>,
     pub prioridad: Option<String>,

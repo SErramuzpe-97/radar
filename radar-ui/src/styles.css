@@ -41,6 +41,8 @@ main { flex: 1; overflow: auto; padding: 16px; }
 .tabla tr:hover { background: var(--panel); cursor: pointer; }
 .tabla tr.seleccionada { background: var(--superficie-secundaria); }
 .filtros { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.filtros-panel { flex: 0 0 auto; }
+.filtros-panel > summary { display: none; }
 .actualizar-tabla { margin-left: auto; white-space: nowrap; }
 .seleccion-barra { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; flex-wrap: wrap; }
 .seleccion-barra label { display: flex; align-items: center; gap: 6px; color: var(--muted); }
@@ -561,6 +563,12 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
   .app.negocio-abierto .nav-inferior { display:none; }
   .app.negocio-abierto main { padding:0; }
   .tabla-cuerpo { overscroll-behavior:contain; }
+  .filtros-panel > summary { display:flex;align-items:center;gap:10px;min-height:44px;margin-bottom:8px;padding:6px 12px;border:1px solid var(--borde);border-radius:9px;background:var(--panel);font-weight:700;cursor:pointer;list-style:none; }
+  .filtros-panel > summary::-webkit-details-marker { display:none; }
+  .filtros-panel > summary::after { content:"⌄";margin-left:auto;font-size:1.1rem; }
+  .filtros-panel[open] > summary::after { content:"⌃"; }
+  .filtros-activos { padding:2px 8px;border-radius:999px;background:#e9ece4;color:#304b3a;font-size:.78rem;font-weight:600; }
+  .filtros { padding:0 0 4px; }
   .diagnostico-capturas img { max-height:50dvh; }
 }
 

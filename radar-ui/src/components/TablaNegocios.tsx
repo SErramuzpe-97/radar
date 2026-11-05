@@ -3,7 +3,7 @@ import { filtros, pagina, cargando, error, recargar, programarRecarga, cancelarC
 import { RUBROS, TIPOS_ENTIDAD, rubroNombre } from "../rubros";
 
 const SECTORES = ["", "hosteleria", "comercio", "servicios", "profesionales", "industria"];
-const ESTADOS = ["", "SIN_WEB", "SOLO_REDES", "WEB_ROTA", "WEB_APARCADA", "WEB_OBSOLETA", "WEB_MEJORABLE", "WEB_OK"];
+const ESTADOS = ["", "CON_WEB", "SIN_WEB", "SOLO_REDES", "WEB_ROTA", "WEB_APARCADA", "WEB_OBSOLETA", "WEB_MEJORABLE", "WEB_OK"];
 const PRIORIDADES = ["", "A", "B", "C"];
 const ESTADOS_PIPELINE: [string,string][] = [["", "Todos los estados de seguimiento"],["nuevo","Nuevo"],["contactado","Contactado"],["visita_hecha","Visita hecha"],["interesado","Interesado"],["no_interesado","No interesado"],["propuesta","Propuesta"],["cerrado","Cerrado"]];
 
@@ -28,6 +28,7 @@ const AUDITORIA_ESTADOS: Record<string, [string,string]> = {
 export function TablaNegocios() {
   useEffect(() => () => cancelarCargaLista(), []);
   const [seleccionados, setSeleccionados] = useState<number[]>([]);
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(() => !window.matchMedia("(max-width: 1199px), (any-pointer: coarse) and (max-width: 1600px)").matches);
   const f = filtros.value;
   const p = pagina.value;
   const filas = p?.items ?? [];
@@ -38,6 +39,9 @@ export function TablaNegocios() {
       setSeleccionados([]);
     } catch (e) { error.value = String(e); }
   };
+
+  const filtrosActivos = [f.q, f.municipio, f.sector, f.rubro, f.tipo_entidad, f.estado_web,
+    f.estado_auditoria_tecnica, f.estado_pipeline, f.prioridad].filter(Boolean).length;
 
   return (
     <section class="tabla">
@@ -53,6 +57,8 @@ export function TablaNegocios() {
           {f.mostrar_descartados ? "Restaurar seleccionados" : "Descartar seleccionados"}
         </button>
       </div>
+      <details class="filtros-panel" open={filtrosAbiertos} onToggle={(e) => setFiltrosAbiertos((e.currentTarget as HTMLDetailsElement).open)}>
+        <summary><span>Filtros</span>{filtrosActivos > 0 && <span class="filtros-activos">{filtrosActivos} activos</span>}</summary>
       <div class="filtros">
         <input placeholder="Buscar nombre…" value={f.q} onInput={(e) => ((filtros.value = { ...filtros.value, q: (e.target as HTMLInputElement).value, pagina: 1 }), programarRecarga())} />
         <input placeholder="Municipio…" value={f.municipio} onInput={(e) => ((filtros.value = { ...filtros.value, municipio: (e.target as HTMLInputElement).value, pagina: 1 }), programarRecarga())} />
@@ -87,6 +93,7 @@ export function TablaNegocios() {
           {cargando.value ? "Actualizando…" : "Actualizar tabla"}
         </button>
       </div>
+      </details>
 
       {error.value && <p class="error">{error.value}</p>}
       {cargando.value && !p && <p class="muted">Cargando negocios…</p>}

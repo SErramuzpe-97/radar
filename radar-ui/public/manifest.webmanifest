@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "Radar Navarra",
+  "short_name": "Radar Navarra",
+  "description": "Radar de negocios y oportunidades de Navarra",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f5ec",
+  "theme_color": "#f6f5ec",
+  "icons": [
+    { "src": "/icons/radar-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "/icons/radar-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

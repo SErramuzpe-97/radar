@@ -862,8 +862,15 @@ fn filtros_negocios_sql(f: &FiltrosNegocios) -> Result<(String, Vec<rusqlite::ty
         args.push(Value::from(format!("%{q}%")));
     }
     if let Some(e) = &f.estado_web {
-        wh.push(format!("{ULTIMA_AUDITORIA} = ?"));
-        args.push(Value::from(e.as_str().to_string()));
+        if e == "CON_WEB" {
+            wh.push("web IS NOT NULL AND web <> ''
+                AND lower(web) NOT LIKE '%facebook.com%' AND lower(web) NOT LIKE '%instagram.com%'
+                AND lower(web) NOT LIKE '%tiktok.com%' AND lower(web) NOT LIKE '%twitter.com%'
+                AND lower(web) NOT LIKE '%x.com%' AND lower(web) NOT LIKE '%linkedin.com%'".into());
+        } else {
+            wh.push(format!("{ULTIMA_AUDITORIA} = ?"));
+            args.push(Value::from(e.clone()));
+        }
     }
     if let Some(e) = &f.estado_auditoria_tecnica {
         if ["realizada", "en_curso", "pendiente", "error"].contains(&e.as_str()) {

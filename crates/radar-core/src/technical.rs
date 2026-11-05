@@ -43,8 +43,11 @@ pub fn siguiente(conn: &Connection) -> Result<Option<Job>> {
     let id: Option<String> = conn
         .query_row(
             &format!(
-                "SELECT j.id FROM jobs j WHERE j.tipo='technical' AND j.estado='pendiente'
-            AND {TRABAJO_VIGENTE} ORDER BY j.creado,j.id LIMIT 1"
+            "SELECT j.id FROM jobs j JOIN negocios n ON n.id=CAST(json_extract(j.params,'$.negocio_id') AS INTEGER)
+            WHERE j.tipo='technical' AND j.estado='pendiente'
+            AND {TRABAJO_VIGENTE}
+            ORDER BY (SELECT MAX(o.score) FROM oportunidades_servicio o WHERE o.negocio_id=n.id) DESC NULLS LAST,
+                     j.creado,j.id LIMIT 1"
             ),
             [],
             |r| r.get(0),
@@ -130,7 +133,8 @@ pub fn enqueue_due(conn: &Connection, before: &str) -> Result<Option<Job>> {
                  AND json_extract(j.params,'$.url')=n.web)
                AND COALESCE((SELECT MAX(strftime('%s',t.fecha)) FROM auditorias_tecnicas t
                  WHERE t.negocio_id=n.id AND t.url=n.web), 0) < strftime('%s',?1)
-             ORDER BY COALESCE((SELECT MAX(strftime('%s',t.fecha)) FROM auditorias_tecnicas t
+             ORDER BY (SELECT MAX(o.score) FROM oportunidades_servicio o WHERE o.negocio_id=n.id) DESC NULLS LAST,
+                      COALESCE((SELECT MAX(strftime('%s',t.fecha)) FROM auditorias_tecnicas t
                  WHERE t.negocio_id=n.id AND t.url=n.web), 0), n.id LIMIT 1",
             [before],
             |r| r.get(0),
