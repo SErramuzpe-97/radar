@@ -5,6 +5,8 @@ import { cargandoMapa, errorMapa, filtros, negociosMapa, recargarMapa, cargarDet
   cancelarCargaMapa, desactivarMapa, queryFiltrosMapa, cargarNegociosZona } from "../stores/negocios";
 import type { PuntoMapa, ZonaMapa, PaginaNegocios } from "../stores/negocios";
 import { RUBROS, TIPOS_ENTIDAD } from "../rubros";
+import { Desplegable } from "./Desplegable";
+import { transicionar } from "../transicion";
 
 const SECTORES = ["", "hosteleria", "comercio", "servicios", "profesionales", "industria"];
 const ICONOS: Record<string, string> = {
@@ -23,7 +25,7 @@ function iconoNegocio(n: PuntoMapa) {
   const score = n.score_potencial;
   const sector = n.sector ?? "otro";
   const html = `<span class="marker-potential ${clasePotencial(score)}"><span class="marker-sector">${ICONOS[sector] ?? "📍"}</span></span>`;
-  return L.divIcon({ className: "radar-marker", html, iconSize: [40, 50], iconAnchor: [20, 27], popupAnchor: [0, -24] });
+  return L.divIcon({ className: "radar-marker", html, iconSize: [48, 58], iconAnchor: [24, 32], popupAnchor: [0, -28] });
 }
 
 // Leaflet recibe únicamente los puntos/agrupaciones de la zona visible.
@@ -33,6 +35,7 @@ export function MapaNegocios() {
   const markersRef = useRef<L.LayerGroup | null>(null);
   const programarCargaRef = useRef<() => void>(() => {});
   const [zonaSeleccionada, setZonaSeleccionada] = useState<ZonaMapa | null>(null);
+  const [filtrosMapaAbiertos] = useState(() => !window.matchMedia("(max-width: 1199px), (any-pointer: coarse) and (max-width: 1600px)").matches);
   const f = filtros.value;
   const respuesta = negociosMapa.value;
   const claveFiltros = JSON.stringify(queryFiltrosMapa());
@@ -112,14 +115,14 @@ export function MapaNegocios() {
         continue;
       }
       const cluster = L.marker([n.lat, n.lon], {
-        icon: L.divIcon({ className: "radar-cluster", html: `<span class="cluster-count ${clasePotencial(n.score_potencial)}">${n.cantidad}</span>`, iconSize: [38, 38], iconAnchor: [19, 19] }),
+        icon: L.divIcon({ className: "radar-cluster", html: `<span class="cluster-count ${clasePotencial(n.score_potencial)}">${n.cantidad}</span>`, iconSize: [46, 46], iconAnchor: [23, 23] }),
         title: `${n.cantidad} empresas`,
       });
       cluster.bindTooltip(`${n.cantidad} empresas en esta zona. Pulsa para explorar.`);
       cluster.on("click", () => {
         const z = n.zona;
         // La lista permite abrir también empresas que comparten coordenadas.
-        setZonaSeleccionada(z);
+        transicionar(() => setZonaSeleccionada(z));
         if (map.getZoom() < 19) {
           const bounds = L.latLngBounds([[z.sur, z.oeste], [z.norte, z.este]]);
           map.fitBounds(bounds, { padding: [36, 36], maxZoom: Math.min(19, map.getZoom() + 3) });
@@ -131,7 +134,8 @@ export function MapaNegocios() {
 
   return (
     <section class="mapa-panel">
-      <div class="mapa-controles">
+      <Desplegable className="mapa-filtros-panel" titulo="Filtros" inicialAbierto={filtrosMapaAbiertos}>
+       <div class="mapa-controles">
         <input aria-label="Filtrar municipios del mapa" placeholder="Municipio…" value={f.municipio}
           onInput={(e) => { filtros.value = { ...filtros.value, municipio: (e.target as HTMLInputElement).value }; }} />
         <select aria-label="Filtrar sector del mapa" value={f.sector}
@@ -153,8 +157,9 @@ export function MapaNegocios() {
         <button class="secundario" disabled={cargandoMapa.value} onClick={() => programarCargaRef.current()}>
           {cargandoMapa.value ? "Actualizando…" : "Actualizar mapa"}
         </button>
-        <span class="muted mapa-cuenta">{respuesta?.total.toLocaleString("es-ES") ?? "…"} empresas en la zona visible</span>
-      </div>
+       </div>
+      </Desplegable>
+      <div class="mapa-resumen muted">{respuesta?.total.toLocaleString("es-ES") ?? "…"} empresas en la zona visible</div>
       {errorMapa.value && <p class="error" role="alert">{errorMapa.value}</p>}
       <div class="mapa-leyenda">
         <span><i class="leyenda-alto" /> Potencial alto</span>

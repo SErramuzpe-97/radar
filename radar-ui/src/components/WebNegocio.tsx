@@ -1,11 +1,11 @@
-import {useEffect,useRef,useState} from 'preact/hooks';
+import {useEffect,useState} from 'preact/hooks';
 import {detalle,cargarDetalle} from '../stores/negocios';
 import {confirmarWeb,descartarWeb,descubrirWeb,consultarJob} from '../stores/webs';
+import {Desplegable} from './Desplegable';
 export function WebNegocio(){
  const d=detalle.value!;const w=d.web_info,n=d.negocio;const confirmed=w.url_confirmada;const automatic=w.origen==='verificacion_automatica';
  const [url,setUrl]=useState(''),[ocupado,setOcupado]=useState(false),[mensaje,setMensaje]=useState('');
- const formRef=useRef<HTMLDetailsElement>(null);
- useEffect(()=>{setUrl('');setMensaje('');if(formRef.current)formRef.current.open=false;},[n.id,confirmed]);
+ useEffect(()=>{setUrl('');setMensaje('');},[n.id,confirmed]);
  const actuar=async(fn:()=>Promise<unknown>)=>{setOcupado(true);setMensaje('');try{await fn();await cargarDetalle(n.id);}catch(e){setMensaje(String(e));}finally{setOcupado(false);}};
  const buscar=async()=>{const job=await descubrirWeb(n.id);setMensaje('Búsqueda en cola: 0/'+job.total+' negocios.');
   for(let i=0;i<120;i++){await new Promise(r=>setTimeout(r,5000));if(detalle.value?.negocio.id!==n.id)return;
@@ -21,10 +21,10 @@ export function WebNegocio(){
    <div class="acciones">{!['red_social','directorio'].includes(c.tipo)&&<button disabled={ocupado} onClick={()=>void actuar(()=>confirmarWeb(n.id,c.url))}>Confirmar web propia</button>}<button class="secundario" disabled={ocupado} onClick={()=>void actuar(()=>descartarWeb(n.id,c.id))}>Descartar sugerencia</button></div>
   </article>)}
   {!confirmed&&<><p class="muted"><small>{w.aviso||(!w.buscador_configurado?'Buscador automático sin configurar. Puedes consultar las fuentes públicas, buscar en el navegador o introducir la URL.':'Tavily disponible · '+w.creditos_restantes+' créditos restantes este mes.')}</small></p><div class="acciones"><button disabled={ocupado} onClick={()=>void actuar(buscar)}>Buscar web</button><a href={'https://www.google.com/search?q='+encodeURIComponent(w.consulta)} target="_blank" rel="noreferrer">Abrir búsqueda</a></div></>}
-  <details class="web-add" ref={formRef}><summary>{confirmed?'Cambiar web confirmada':'Añadir web'}</summary>
-   <form class="web-correccion" onSubmit={e=>{e.preventDefault();void actuar(async()=>{await confirmarWeb(n.id,url);setUrl('');if(formRef.current)formRef.current.open=false;setMensaje('Web confirmada y auditoría programada.');});}}>
+  <Desplegable className="web-add" titulo={confirmed?'Cambiar web confirmada':'Añadir web'}>
+   <form class="web-correccion" onSubmit={e=>{e.preventDefault();void actuar(async()=>{await confirmarWeb(n.id,url);setUrl('');setMensaje('Web confirmada y auditoría programada.');});}}>
     <label htmlFor={'web-correcta-'+n.id}>{confirmed?'Corregir URL confirmada':'Introducir web propia'}</label><input id={'web-correcta-'+n.id} type="url" placeholder="https://…" value={url} required onInput={e=>setUrl(e.currentTarget.value)}/><button disabled={ocupado||!url}>Confirmar URL</button>
    </form>
-  </details>{mensaje&&<p role="status">{mensaje}</p>}
+  </Desplegable>{mensaje&&<p role="status">{mensaje}</p>}
  </section>;
 }

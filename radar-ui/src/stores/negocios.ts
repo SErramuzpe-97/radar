@@ -1,6 +1,7 @@
 import { signal, computed } from "@preact/signals";
 import { api, authHeaders } from "../api/client";
 import type { components } from "../api/schema";
+import { transicionar } from "../transicion";
 
 export type Negocio = components["schemas"]["Negocio"];
 export type PaginaNegocios = components["schemas"]["PaginaNegocios"];
@@ -171,8 +172,8 @@ export async function cargarDetalle(id: number) {
     params: { path: { id } },
     headers: authHeaders(),
   });
-  if (!e && data && seleccionadoId.value === id) detalle.value = data;
-  else if (e && seleccionadoId.value === id) { detalle.value=null; seleccionadoId.value=null; error.value="La ficha ya no está disponible. Actualiza los resultados."; }
+  if (!e && data && seleccionadoId.value === id) transicionar(() => { detalle.value = data; });
+  else if (e && seleccionadoId.value === id) transicionar(() => { detalle.value=null; seleccionadoId.value=null; error.value="La ficha ya no está disponible. Actualiza los resultados."; });
 }
 
 export async function recargarStats() {

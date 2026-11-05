@@ -1,6 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { filtros, pagina, cargando, error, recargar, programarRecarga, cancelarCargaLista, cargarDetalle, seleccionadoId, actualizarDescartados } from "../stores/negocios";
 import { RUBROS, TIPOS_ENTIDAD, rubroNombre } from "../rubros";
+import { Desplegable } from "./Desplegable";
 
 const SECTORES = ["", "hosteleria", "comercio", "servicios", "profesionales", "industria"];
 const ESTADOS = ["", "CON_WEB", "SIN_WEB", "SOLO_REDES", "WEB_ROTA", "WEB_APARCADA", "WEB_OBSOLETA", "WEB_MEJORABLE", "WEB_OK"];
@@ -57,8 +58,7 @@ export function TablaNegocios() {
           {f.mostrar_descartados ? "Restaurar seleccionados" : "Descartar seleccionados"}
         </button>
       </div>
-      <details class="filtros-panel" open={filtrosAbiertos} onToggle={(e) => setFiltrosAbiertos((e.currentTarget as HTMLDetailsElement).open)}>
-        <summary><span>Filtros</span>{filtrosActivos > 0 && <span class="filtros-activos">{filtrosActivos} activos</span>}</summary>
+      <Desplegable className="filtros-panel" titulo="Filtros" inicialAbierto={filtrosAbiertos} indicador={filtrosActivos > 0 && <span class="filtros-activos">{filtrosActivos} activos</span>}>
       <div class="filtros">
         <input placeholder="Buscar nombre…" value={f.q} onInput={(e) => ((filtros.value = { ...filtros.value, q: (e.target as HTMLInputElement).value, pagina: 1 }), programarRecarga())} />
         <input placeholder="Municipio…" value={f.municipio} onInput={(e) => ((filtros.value = { ...filtros.value, municipio: (e.target as HTMLInputElement).value, pagina: 1 }), programarRecarga())} />
@@ -93,7 +93,7 @@ export function TablaNegocios() {
           {cargando.value ? "Actualizando…" : "Actualizar tabla"}
         </button>
       </div>
-      </details>
+      </Desplegable>
 
       {error.value && <p class="error">{error.value}</p>}
       {cargando.value && !p && <p class="muted">Cargando negocios…</p>}
@@ -147,7 +147,7 @@ export function TablaNegocios() {
         <div class="paginacion">
           <button disabled={f.pagina <= 1} onClick={() => ((filtros.value = { ...filtros.value, pagina: f.pagina - 1 }), recargar())}>←</button>
           <span>
-            página {p.pagina} de {Math.max(1, Math.ceil(p.total / p.tam))} ({p.total} negocios)
+            Página {p.pagina} de {Math.max(1, Math.ceil(p.total / p.tam))} ({p.total} negocios)
           </span>
           <button disabled={f.pagina * f.tam >= p.total} onClick={() => ((filtros.value = { ...filtros.value, pagina: f.pagina + 1 }), recargar())}>→</button>
         </div>

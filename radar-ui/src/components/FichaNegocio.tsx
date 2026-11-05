@@ -5,6 +5,7 @@ import { AuditoriaTecnica } from "./AuditoriaTecnica";
 import { DiagnosticoWeb } from "./DiagnosticoWeb";
 import type { components } from "../api/schema";
 import { rubroNombre } from "../rubros";
+import { transicionar } from "../transicion";
 
 const ESTADOS: Record<string, string> = { nuevo:"Nuevo", contactado:"Contactado", visita_hecha:"Visita hecha", interesado:"Interesado", no_interesado:"No interesado", propuesta:"Propuesta", cerrado:"Cerrado" };
 const ACTIVIDADES: Record<string, string> = { visita:"Visita", llamada:"Llamada", email:"Email", reunion:"Reunión", oferta:"Oferta" };
@@ -21,7 +22,7 @@ export function FichaNegocio({ origen }: { origen: "tabla" | "mapa" }) {
   const [guardando, setGuardando] = useState<"estado" | "actividad" | null>(null);
   const [mensaje, setMensaje] = useState("");
   const [fallo, setFallo] = useState(false);
-  const cerrar = () => { detalle.value = null; seleccionadoId.value = null; };
+  const cerrar = () => transicionar(() => { detalle.value = null; seleccionadoId.value = null; });
   useEffect(() => { setEstado(d?.pipeline?.estado ?? "nuevo"); }, [d?.negocio.id, d?.pipeline?.estado]);
   useEffect(() => { setNotas(""); setMensaje(""); setTab("ficha"); setAuditEngines([]); ref.current?.querySelector(".ficha-contenido")?.scrollTo(0,0); }, [d?.negocio.id]);
   const actualizarMotores = useCallback((motores: string[]) => setAuditEngines(motores), []);
@@ -66,7 +67,7 @@ export function FichaNegocio({ origen }: { origen: "tabla" | "mapa" }) {
     <header class="ficha-cabecera"><button class="secundario cerrar-ficha" onClick={cerrar} aria-label={`Volver a ${origen === "tabla" ? "la tabla" : "el mapa"}`}>← <span>Volver a {origen === "tabla" ? "tabla" : "mapa"}</span></button>
     <div class="ficha-tamano"><button type="button" class="secundario" onClick={() => document.documentElement.style.removeProperty("--radar-ficha-width")}>Reset tamaño</button></div>
     <h2>{n.nombre}</h2>
-    <div class="ficha-tabs" role="tablist" aria-label="Contenido de la ficha">{[["ficha","Ficha"],["auditoria","Auditoría"],["diagnostico","Diagnóstico web"],...(auditEngines.includes("lighthouse")?[["lighthouse","Lighthouse"]]:[]),...(auditEngines.includes("siteone")?[["siteone","SiteOne"]]:[])].map(([v,l])=><button key={v} role="tab" aria-selected={tab===v} onClick={()=>{if((v==="lighthouse"||v==="siteone")&&window.matchMedia("(max-width: 1199px), (any-pointer: coarse) and (max-width: 1600px)").matches){window.location.assign(`/auditoria-tecnica/${n.id}/${v}/mobile`);return}setTab(v)}} class={tab===v?"":"secundario"}>{l}</button>)}</div></header>
+    <div class="ficha-tabs" role="tablist" aria-label="Contenido de la ficha">{[["ficha","Ficha"],["auditoria","Auditoría"],["diagnostico","Diagnóstico web"],...(auditEngines.includes("lighthouse")?[["lighthouse","Lighthouse"]]:[]),...(auditEngines.includes("siteone")?[["siteone","SiteOne"]]:[])].map(([v,l])=><button key={v} role="tab" aria-selected={tab===v} onClick={()=>transicionar(()=>setTab(v))} class={tab===v?"":"secundario"}>{l}</button>)}</div></header>
     <div class={`ficha-contenido ${tab==="lighthouse"||tab==="siteone"?"informe-activo":""}`}>
     {tab==="ficha"&&<>
     <div class="ficha-etiquetas"><span class="badge">{rubroNombre(n.rubro ?? n.sector ?? n.categoria ?? "otro")}</span>{(rubroEvidence as any).tipo_entidad&&<span class="badge">{(rubroEvidence as any).tipo_entidad}</span>}{n.score_potencial != null && <span class={`badge ${n.score_potencial >= 70 ? "potencial-alto" : n.score_potencial >= 50 ? "potencial-medio" : "potencial-bajo"}`}>Potencial {n.score_potencial}/100 · {n.prioridad_comercial}</span>}<span class={`badge pipeline-${d.pipeline?.estado ?? "nuevo"}`}>{ESTADOS[d.pipeline?.estado ?? "nuevo"]}</span></div>

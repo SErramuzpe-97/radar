@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "preact/hooks";
 import { consultarAuditoria, consultarRevisionHallazgo, consultarVisitaDiagnostico, guardarRevisionHallazgo } from "../stores/webs";
 import { authHeaders } from "../api/client";
 import { VisitaDiagnostico } from "./VisitaDiagnostico";
+import { Chevron, Desplegable } from "./Desplegable";
 import type { components } from "../api/schema";
 import { categoriaEs, errorAuditoriaEs, estadoAuditoriaEs, gravedadEs, traducirHallazgo } from "../diagnostico-es";
 
@@ -207,7 +208,7 @@ export function DiagnosticoWeb({ id, web, name }: { id: number; web?: string | n
       </div>
       {findings.length ? Array.from(groups.entries()).map(([category, items]) => <section class="diagnostico-grupo" key={category}>
         <button type="button" class="diagnostico-grupo-titulo" aria-expanded={Boolean(openGroups[category])} aria-controls={`hallazgos-${id}-${category}`} onClick={() => setOpenGroups(current => ({ ...current, [category]: !current[category] }))}>
-          <span>{categoriaEs(category)}</span><span class="muted">({items.length})</span><svg class="diagnostico-grupo-icono" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" /></svg>
+          <span>{categoriaEs(category)}</span><span class="muted">({items.length})</span><Chevron />
         </button>
         <div id={`hallazgos-${id}-${category}`} class={`diagnostico-grupo-contenido ${openGroups[category] ? "abierto" : ""}`} aria-hidden={!openGroups[category]} inert={!openGroups[category]}>
           <div class="diagnostico-grupo-interior">
@@ -235,7 +236,7 @@ export function DiagnosticoWeb({ id, web, name }: { id: number; web?: string | n
             </div>
             <p>{translated.explicacion}</p><p class="muted">Siguiente paso: {translated.siguientePaso}</p>
             <small class="muted">{item.url || web} · {motorNombre(item._motor)} / {item._device === "mobile" ? "móvil" : "escritorio"} · {REVISION_ES[review.estado] || "Pendiente de contraste"}</small>
-            <details class="diagnostico-original"><summary>Ver detalle técnico original</summary><p>{translated.original}</p>{item.details && <p>{item.details}</p>}{item.recommendation && <p>{item.recommendation}</p>}<small>Código: {item.code || "—"}</small></details>
+            <Desplegable className="diagnostico-original" titulo="Ver detalle técnico original"><p>{translated.original}</p>{item.details && <p>{item.details}</p>}{item.recommendation && <p>{item.recommendation}</p>}<small>Código: {item.code || "—"}</small></Desplegable>
           </article>;
         })}
           </div>

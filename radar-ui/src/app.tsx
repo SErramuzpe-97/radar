@@ -11,18 +11,12 @@ import { RutaDia } from "./components/RutaDia";
 import { PanelStats } from "./components/PanelStats";
 import { PanelFuentes } from "./components/PanelFuentes";
 import { PanelSeguimiento } from "./components/PanelSeguimiento";
-import { AuditoriaInformeAparte } from "./components/AuditoriaTecnica";
+import { transicionar } from "./transicion";
 
 type Vista = "tabla" | "mapa" | "ruta" | "stats" | "jobs" | "fuentes" | "seguimiento";
 
-function rutaAuditoriaAparte() {
-  const match = window.location.pathname.match(/^\/auditoria-tecnica\/(\d+)\/(lighthouse|siteone)\/(mobile|desktop)\/?$/);
-  return match ? { id: Number(match[1]), engine: match[2] as "lighthouse" | "siteone", device: match[3] as "mobile" | "desktop" } : null;
-}
-
 export function App() {
   const [vista, setVista] = useState<Vista>("tabla");
-  const informeAparte = rutaAuditoriaAparte();
   const negocioAbierto = Boolean(detalle.value) && (vista === "tabla" || vista === "mapa");
 
   useEffect(() => {
@@ -31,32 +25,26 @@ export function App() {
 
   useEffect(() => {
     if (!autenticado.value) return;
-    if (informeAparte) return;
     recargar();
     recargarStats();
     iniciarPolling();
   }, [autenticado.value]);
 
   if (!autenticado.value) return <Login />;
-  if (informeAparte) return <div class="app auditoria-aparte-app">
-    <header class="topbar informe-aparte-topbar"><button type="button" class="secundario" onClick={() => history.length > 1 ? history.back() : window.location.assign("/")}>← Volver a Radar Navarra</button><strong>Radar Navarra</strong></header>
-    <main class="informe-aparte-main"><AuditoriaInformeAparte id={informeAparte.id} engine={informeAparte.engine} initialDevice={informeAparte.device}/></main>
-  </div>;
-
   return (
     <div class={`app ${negocioAbierto ? "negocio-abierto" : ""}`}>
       <header class="topbar">
         <strong>Radar Navarra</strong>
         <nav>
-          <button class={vista === "tabla" ? "activo" : ""} onClick={() => { setVista("tabla"); void recargar(); }}>Tabla</button>
-          <button class={vista === "mapa" ? "activo" : ""} onClick={() => setVista("mapa")}>Mapa</button>
-          <button class={vista === "ruta" ? "activo" : ""} onClick={() => setVista("ruta")}>Ruta del día</button>
-          <button class={vista === "stats" ? "activo" : ""} onClick={() => setVista("stats")}>Panel</button>
-          <button class={vista === "jobs" ? "activo" : ""} onClick={() => setVista("jobs")}>Buscar empresas</button>
-          <button class={vista === "fuentes" ? "activo" : ""} onClick={() => setVista("fuentes")}>Fuentes</button>
-          <button class={vista === "seguimiento" ? "activo" : ""} onClick={() => setVista("seguimiento")}>Seguimiento</button>
+          <button class={vista === "tabla" ? "activo" : ""} onClick={() => transicionar(() => { setVista("tabla"); void recargar(); })}>Tabla</button>
+          <button class={vista === "mapa" ? "activo" : ""} onClick={() => transicionar(() => setVista("mapa"))}>Mapa</button>
+          <button class={vista === "ruta" ? "activo" : ""} onClick={() => transicionar(() => setVista("ruta"))}>Ruta del día</button>
+          <button class={vista === "stats" ? "activo" : ""} onClick={() => transicionar(() => setVista("stats"))}>Panel</button>
+          <button class={vista === "jobs" ? "activo" : ""} onClick={() => transicionar(() => setVista("jobs"))}>Buscar empresas</button>
+          <button class={vista === "fuentes" ? "activo" : ""} onClick={() => transicionar(() => setVista("fuentes"))}>Fuentes</button>
+          <button class={vista === "seguimiento" ? "activo" : ""} onClick={() => transicionar(() => setVista("seguimiento"))}>Seguimiento</button>
         </nav>
-        <select class="nav-compacta" aria-label="Vista" value={vista} onChange={e => { const v=(e.target as HTMLSelectElement).value as Vista; setVista(v); if(v==="tabla") void recargar(); }}>
+        <select class="nav-compacta" aria-label="Vista" value={vista} onChange={e => { const v=(e.target as HTMLSelectElement).value as Vista; transicionar(() => { setVista(v); if(v==="tabla") void recargar(); }); }}>
           {Object.entries({tabla:"Tabla",mapa:"Mapa",ruta:"Ruta del día",stats:"Panel",jobs:"Buscar empresas",fuentes:"Fuentes",seguimiento:"Seguimiento"}).map(([v,l]) => <option key={v} value={v}>{l}</option>)}
         </select>
         <div class="sesion">
@@ -76,13 +64,13 @@ export function App() {
         {vista === "stats" && <PanelStats />}
         {vista === "jobs" && <PanelJobs />}
         {vista === "fuentes" && <PanelFuentes />}
-        {vista === "seguimiento" && <PanelSeguimiento abrirNegocio={() => setVista("tabla")} />}
+        {vista === "seguimiento" && <PanelSeguimiento abrirNegocio={() => transicionar(() => setVista("tabla"))} />}
       </main>
       <nav class="nav-inferior" aria-label="Navegación principal">
-        <button type="button" class={vista === "tabla" ? "activo" : ""} aria-current={vista === "tabla" ? "page" : undefined} onClick={() => { setVista("tabla"); void recargar(); }}>
+        <button type="button" class={vista === "tabla" ? "activo" : ""} aria-current={vista === "tabla" ? "page" : undefined} onClick={() => transicionar(() => { setVista("tabla"); void recargar(); })}>
           <span class="nav-inferior-icono" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M3.5 9h17M9 9v11"/></svg></span><span>Tabla</span>
         </button>
-        <button type="button" class={vista === "mapa" ? "activo" : ""} aria-current={vista === "mapa" ? "page" : undefined} onClick={() => setVista("mapa")}>
+        <button type="button" class={vista === "mapa" ? "activo" : ""} aria-current={vista === "mapa" ? "page" : undefined} onClick={() => transicionar(() => setVista("mapa"))}>
           <span class="nav-inferior-icono" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3.5 6 5-2 7 2 5-2v14l-5 2-7-2-5 2V6Z"/><path d="M8.5 4v14M15.5 6v14"/><circle cx="12" cy="10" r="2.2"/></svg></span><span>Mapa</span>
         </button>
         <button type="button" onClick={() => void logout()}>

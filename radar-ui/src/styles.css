@@ -42,7 +42,21 @@ main { flex: 1; overflow: auto; padding: 16px; }
 .tabla tr.seleccionada { background: var(--superficie-secundaria); }
 .filtros { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .filtros-panel { flex: 0 0 auto; }
-.filtros-panel > summary { display: none; }
+.desplegable { min-width:0; }
+.desplegable-titulo { display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:7px 12px;border:1px solid var(--borde);border-radius:9px;background:var(--panel);color:var(--texto);text-align:left;font:inherit;font-weight:650;cursor:pointer; }
+.desplegable-titulo:hover { background:#f1f1e9; }
+.desplegable-chevron { flex:0 0 20px;width:20px;height:20px;margin-left:auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--muted);transition:transform .24s ease; }
+.desplegable-titulo[aria-expanded="true"] .desplegable-chevron,.diagnostico-grupo-titulo[aria-expanded="true"] .desplegable-chevron { transform:rotate(180deg); }
+.desplegable-contenido,.diagnostico-grupo-contenido { display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .28s ease,opacity .2s ease; }
+.desplegable-contenido.abierto,.diagnostico-grupo-contenido.abierto { grid-template-rows:1fr;opacity:1; }
+.desplegable-interior { min-height:0;overflow:hidden;padding-top:0;transition:padding-top .26s ease; }
+.desplegable-contenido.abierto .desplegable-interior { padding-top:8px; }
+.filtros-panel > .desplegable-titulo { margin-bottom:4px; }
+.mapa-filtros-panel { flex:0 0 auto; }
+.mapa-filtros-panel .desplegable-titulo { min-height:40px; }
+.mapa-filtros-panel .desplegable-interior { padding-bottom:4px; }
+.mapa-controles { max-height:none;overflow:visible; }
+.mapa-leyenda { flex:0 0 auto; }
 .actualizar-tabla { margin-left: auto; white-space: nowrap; }
 .seleccion-barra { display: flex; align-items: center; gap: 12px; margin: 0 0 8px; flex-wrap: wrap; }
 .seleccion-barra label { display: flex; align-items: center; gap: 6px; color: var(--muted); }
@@ -87,7 +101,7 @@ button {
 button:disabled { opacity: .6; cursor: wait; }
 button.secundario { background: transparent; border: 1px solid var(--borde); color: var(--muted); }
 .acciones { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
-.paginacion { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.paginacion { display: flex; align-items: center; justify-content:center; gap: 12px; margin-top: 12px; }
 .paginacion button { padding: 4px 10px; }
 .prio-a { color: #67d391; font-weight: 700; }
 .prio-b { color: #e3b341; font-weight: 700; }
@@ -124,17 +138,18 @@ button.secundario { background: transparent; border: 1px solid var(--borde); col
 .mapa-controles { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .mapa-controles input, .mapa-controles select { min-width: 130px; background: var(--panel); color: var(--texto); border: 1px solid var(--borde); border-radius: 6px; padding: 6px 8px; }
 .mapa-cuenta { margin-left: auto; font-size: 12px; }
+.mapa-resumen { flex:0 0 auto;font-size:.82rem;overflow-wrap:anywhere; }
 .mapa-leyenda { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; font-size: 12px; }
 .mapa-leyenda span { display: inline-flex; align-items: center; gap: 5px; }
 .mapa-leyenda i { width: 10px; height: 10px; border-radius: 50%; }
 .leyenda-alto { background: #24a36a; }.leyenda-medio { background: #d99a12; }.leyenda-bajo, .leyenda-sin-datos { background: #68717d; }
 .mapa { flex: 1; min-height: 320px; border-radius: 8px; z-index: 0; }
 .radar-marker { background: transparent; border: 0; }
-.marker-potential { position: relative; display: grid; place-items: center; width: 36px; height: 36px; border: 3px solid #77818d; border-radius: 50% 50% 50% 0; background: #20252def; transform: rotate(-45deg); box-shadow: 0 2px 8px #0009; }
+.marker-potential { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border: 3px solid #77818d; border-radius: 50% 50% 50% 0; background: #20252def; transform: rotate(-45deg); box-shadow: 0 2px 8px #0009; }
 .marker-sector { display: block; font-size: 18px; line-height: 1; transform: rotate(45deg); }
 .marker-potential.alto { border-color: #24a36a; }.marker-potential.medio { border-color: #d99a12; }.marker-potential.bajo { border-color: #77818d; }.marker-potential.sin-datos { border-color: #68717d; }
 .radar-cluster { background: transparent; border: 0; }
-.cluster-count { display: grid; width: 36px; height: 36px; place-items: center; border: 3px solid #77818d; border-radius: 50%; color: white; background: #29313c; font-size: 12px; font-weight: 750; box-shadow: 0 2px 8px #0009; }
+.cluster-count { display: grid; width: 44px; height: 44px; place-items: center; border: 3px solid #77818d; border-radius: 50%; color: white; background: #29313c; font-size: 14px; font-weight: 750; box-shadow: 0 2px 8px #0009; }
 .cluster-count.alto { border-color: #24a36a; }.cluster-count.medio { border-color: #d99a12; }.cluster-count.bajo { border-color: #77818d; }
 .jobs table { width: 100%; border-collapse: collapse; margin-top: 16px; }
 .jobs th, .jobs td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--borde); }
@@ -312,6 +327,7 @@ html, body, #root { height: 100%; overflow: hidden; }
 .topbar nav { flex-wrap: wrap; }
 .nav-compacta { display: none; }
 main { min-height: 0; min-width: 0; overflow: auto; position: relative; }
+main { view-transition-name:radar-main; }
 main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .split, .mapa-layout { height: 100%; min-height: 0; min-width: 0; grid-template-columns: minmax(320px,1fr) var(--radar-ficha-width,clamp(320px,25vw,640px)); overflow-x: auto; overflow-y: hidden; }
 .tabla { display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
@@ -321,6 +337,8 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .tabla-cuerpo { flex: 1 1 0; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; border: 1px solid var(--borde); border-radius: 8px; }
 .tabla thead th { position: sticky; top: 0; z-index: 1; background: var(--panel); box-shadow: 0 1px var(--borde); }
 .ficha { position: relative; min-height: 0; min-width: 0; height: 100%; overflow: auto; overscroll-behavior: contain; overflow-wrap: anywhere; }
+.ficha-abierta { animation:radar-ficha-entrada .22s ease both; }
+@keyframes radar-ficha-entrada { from { opacity:.7;transform:translateX(12px); } to { opacity:1;transform:translateX(0); } }
 .ficha:focus { outline: none; }
 .cerrar-ficha { display: none; }
 .ficha .servicios-tags { gap: 8px; margin-bottom: 8px; }
@@ -402,10 +420,7 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .diagnostico-grupo { margin:18px 0; }
 .diagnostico-grupo-titulo { display:flex;align-items:center;gap:6px;width:100%;min-height:44px;padding:8px 4px;border:0;border-bottom:1px solid var(--borde);border-radius:0;background:transparent;color:var(--texto);text-align:left;font:inherit;font-weight:700;cursor:pointer; }
 .diagnostico-grupo-titulo:hover { background:#e9ece4; }
-.diagnostico-grupo-icono { flex:0 0 20px;width:20px;height:20px;margin-left:auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;color:var(--muted);transition:transform .24s ease; }
-.diagnostico-grupo-titulo[aria-expanded="true"] .diagnostico-grupo-icono { transform:rotate(180deg); }
-.diagnostico-grupo-contenido { display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .24s ease,opacity .2s ease; }
-.diagnostico-grupo-contenido.abierto { grid-template-rows:1fr;opacity:1; }
+.diagnostico-grupo-titulo .desplegable-chevron { margin-left:auto; }
 .diagnostico-grupo-interior { min-height:0;overflow:hidden;padding-top:0;transition:padding-top .24s ease; }
 .diagnostico-grupo-contenido.abierto .diagnostico-grupo-interior { padding-top:8px; }
 .diagnostico-hallazgo { border:1px solid var(--borde);border-radius:8px;padding:12px;margin:8px 0; }
@@ -440,7 +455,6 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .web-correccion input,.historial-selector select { min-width:0;width:100%;padding:8px;background:var(--fondo);color:var(--texto);border:1px solid var(--borde);border-radius:6px;font:inherit; }
 .web-correccion button { justify-self:start; }
 .web-add { margin:12px 0; }
-.web-add summary { display:inline-flex; padding:6px 10px; border:1px solid var(--borde); border-radius:6px; color:var(--texto); }
 .web-candidata,.informe { border:1px solid var(--borde);border-radius:8px;padding:12px;margin:16px 0; }
 .web-candidata .acciones,.informe .acciones { flex-wrap:wrap;gap:12px; }
 .auditoria-tecnica { padding-top:16px; }
@@ -512,9 +526,10 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .diagnostico-hallazgo-cabecera strong { font-size:1.04rem; }
 .diagnostico-hallazgo > p { line-height:1.6; }
 .diagnostico-original,.informe-detalle-original { margin-top:10px;border-top:1px solid var(--borde);padding-top:8px;color:var(--muted); }
-.diagnostico-original summary,.informe-detalle-original summary,.informe-original-detalle summary { cursor:pointer;font-weight:600;color:#42584b; }
 .informe-espanol { flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain;padding:4px 2px 28px; }
 .informe-espanol-cabecera { display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin:4px 0 18px; }
+.informe-espanol-acciones { display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px; }
+.informe-original-enlace { display:inline-flex;align-items:center;min-height:38px;padding:6px 10px;border:1px solid var(--borde);border-radius:7px;background:var(--panel);color:#304b3a;text-decoration:none;font-weight:600;white-space:nowrap; }
 .informe-espanol-cabecera h3 { margin:3px 0;font-size:1.35rem; }
 .informe-espanol-cabecera p { margin:4px 0;color:var(--muted);font-size:.9rem; }
 .informe-eyebrow { color:#45604f;font-size:.76rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase; }
@@ -584,7 +599,7 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
   .split > .tabla,.mapa-layout > .mapa-panel { min-width:0; }
   .mapa-layout { grid-template-columns:minmax(0,1fr); }
   .mapa-panel { display:flex;flex-direction:column; }
-  .mapa-controles { flex:0 0 auto;max-height:24%;overflow:auto; }
+  .mapa-controles { flex:0 0 auto;max-height:none;overflow:visible; }
   .mapa { width:100%;height:auto;min-height:0;flex:1 1 0; }
   .mapa-visualizacion { min-height:0;flex:1 1 0; }
   .mapa-cuenta { margin-left:0; }
@@ -601,10 +616,6 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
   .app.negocio-abierto .nav-inferior { display:none; }
   .app.negocio-abierto main { padding:0; }
   .tabla-cuerpo { overscroll-behavior:contain; }
-  .filtros-panel > summary { display:flex;align-items:center;gap:10px;min-height:44px;margin-bottom:8px;padding:6px 12px;border:1px solid var(--borde);border-radius:9px;background:var(--panel);font-weight:700;cursor:pointer;list-style:none; }
-  .filtros-panel > summary::-webkit-details-marker { display:none; }
-  .filtros-panel > summary::after { content:"⌄";margin-left:auto;font-size:1.1rem; }
-  .filtros-panel[open] > summary::after { content:"⌃"; }
   .filtros-activos { padding:2px 8px;border-radius:999px;background:#e9ece4;color:#304b3a;font-size:.78rem;font-weight:600; }
   .filtros { padding:0 0 4px; }
   .diagnostico-capturas img { max-height:50dvh; }
@@ -623,7 +634,7 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
   .nav-inferior button { min-height:44px;flex-direction:row;gap:8px;font-size:.8rem; }
   .nav-inferior-icono { width:20px;height:20px; }
   .nav-inferior-icono svg { width:19px;height:19px; }
-  .mapa-controles { max-height:30%;gap:5px; }
+  .mapa-controles { max-height:none;gap:5px; }
   .mapa-controles input,.mapa-controles select,.mapa-controles button { min-height:38px;padding-top:4px;padding-bottom:4px; }
   .ficha-cabecera { padding-top:calc(env(safe-area-inset-top) + 4px);padding-bottom:6px; }
   .ficha-cabecera h2 { margin:3px 0 6px;font-size:1.05rem; }
@@ -648,4 +659,20 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
   .informe-aparte-main { padding-right:16px;padding-left:16px; }
   .informe-aparte-cabecera { align-items:flex-start;flex-direction:column;gap:8px; }
   .informe-aparte-cabecera .auditoria-dispositivos { margin:0; }
+}
+
+@keyframes radar-vista-entra { from { opacity:0;transform:translateY(5px); } to { opacity:1;transform:translateY(0); } }
+@supports (view-transition-name: radar-main) {
+  ::view-transition-group(radar-main) { animation-duration:.22s; }
+  ::view-transition-old(radar-main) { animation:radar-vista-sale .12s ease both; }
+  ::view-transition-new(radar-main) { animation:radar-vista-entra .22s ease both; }
+}
+@keyframes radar-vista-sale { to { opacity:0;transform:translateY(-3px); } }
+@supports not (view-transition-name: radar-main) {
+  main.vista-tabla,main.vista-mapa,main.vista-ruta,main.vista-stats,main.vista-jobs,main.vista-fuentes,main.vista-seguimiento { animation:radar-vista-entra .2s ease both; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .desplegable-chevron,.desplegable-contenido,.desplegable-interior,.diagnostico-grupo-contenido,.ficha-abierta { transition:none!important;animation:none!important; }
+  main.vista-tabla,main.vista-mapa,main.vista-ruta,main.vista-stats,main.vista-jobs,main.vista-fuentes,main.vista-seguimiento { animation:none!important; }
+  ::view-transition-old(root),::view-transition-new(root) { animation:none!important; }
 }
