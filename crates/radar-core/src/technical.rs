@@ -25,6 +25,7 @@ pub fn worker_available() -> bool {
 const TRABAJO_VIGENTE: &str = "EXISTS(
     SELECT 1 FROM negocios n JOIN web_estado w ON w.negocio_id=n.id
     WHERE n.id=CAST(json_extract(j.params,'$.negocio_id') AS INTEGER) AND n.admisible=1
+      AND NOT EXISTS(SELECT 1 FROM negocios_descartados d WHERE d.negocio_id=n.id)
       AND n.web=json_extract(j.params,'$.url') AND w.url_confirmada=n.web
       AND ((w.estado='confirmada' AND w.origen IN ('correccion_usuario','confirmacion_usuario'))
         OR (w.estado='verificada_automatica' AND w.origen='verificacion_automatica'))
@@ -90,6 +91,15 @@ pub fn new_job(tipo: TipoJob, params: Value) -> Job {
 }
 pub fn enqueue(conn: &Connection, id: i64) -> Result<Job> {
     store::get_negocio(conn, id)?.context("Negocio no encontrado")?;
+    let discarded: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM negocios_descartados WHERE negocio_id=?1)",
+        [id],
+        |r| r.get(0),
+    )?;
+    anyhow::ensure!(
+        !discarded,
+        "El negocio está descartado y no se puede auditar"
+    );
     let url = conn.query_row("SELECT url_confirmada FROM web_estado WHERE negocio_id=?1 AND ((estado='confirmada' AND origen IN ('correccion_usuario','confirmacion_usuario')) OR (estado='verificada_automatica' AND origen='verificacion_automatica'))",[id],|r|r.get::<_,Option<String>>(0)).optional()?.flatten().context("Confirma primero una web propia")?;
     anyhow::ensure!(
         !crate::scoring::es_red_social(&url),
@@ -124,6 +134,7 @@ pub fn enqueue_due(conn: &Connection, before: &str) -> Result<Option<Job>> {
         .query_row(
             "SELECT n.id FROM negocios n JOIN web_estado w ON w.negocio_id=n.id
              WHERE n.admisible=1 AND n.web IS NOT NULL
+               AND NOT EXISTS(SELECT 1 FROM negocios_descartados d WHERE d.negocio_id=n.id)
                AND ((w.estado='confirmada' AND w.origen IN ('correccion_usuario','confirmacion_usuario'))
                  OR (w.estado='verificada_automatica' AND w.origen='verificacion_automatica'))
                AND w.url_confirmada=n.web

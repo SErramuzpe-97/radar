@@ -34,10 +34,11 @@ otras fuentes. Son candidaturas, no 1.946 dominios necesariamente únicos ni
 
 La aplicación ejecuta ahora una cola automática y reanudable: primero vuelve a
 contrastar candidatas existentes (incluidos los enlaces OSM recuperados como
-candidatos) y después busca negocios que aún no tengan URL. Las búsquedas Tavily
-se limitan a 35 créditos diarios y 1.000 mensuales, con reserva transaccional y
-caché. La clave se configura en el entorno del servicio y no se guarda en este
-repositorio. Un enlace solo pasa a «verificada automáticamente» tras superar
+candidatos) y después busca negocios que aún no tengan URL. Las búsquedas usan
+OpenRouter Decisions Fast en modalidad gratuita, con un límite conservador de
+45 solicitudes al día, reserva transaccional y caché. No se usa el buscador web
+genérico ni se permite cambiar a modelos de pago. La clave se configura en el
+entorno del servicio y no se guarda en este repositorio. Un enlace solo pasa a «verificada automáticamente» tras superar
 comprobaciones de acceso, nombre e identidad; directorios y redes sociales se
 excluyen. Las URLs automáticas de alta confianza pueden iniciar una auditoría
 técnica. La interfaz distingue ese estado del confirmado por una persona.
@@ -103,10 +104,9 @@ procesar altas y modificaciones.
 
 ### 3. Buscar en la web los negocios restantes
 
-La búsqueda actual está diseñada para un negocio por trabajo y su límite es de
-1.000 créditos Tavily al mes. No puede cubrir 55.604 negocios: aunque cada
-consulta consumiera un crédito, necesitaría más de 55 meses de cuota actual. No
-se debe lanzar una búsqueda masiva sin priorización.
+La búsqueda actual está diseñada para un negocio por trabajo y reserva hasta 45
+solicitudes gratuitas de OpenRouter al día. No puede cubrir 55.604 negocios de
+una sola vez, por lo que no se debe lanzar una búsqueda masiva sin priorización.
 
 Crear una cola de descubrimiento reanudable y separada de la cola de auditoría
 técnica:

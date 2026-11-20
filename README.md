@@ -7,6 +7,7 @@ los puntúa 0–100, los sitúa en un mapa y hace de mini-CRM. Todo local, 0 €
 - **Diseño completo:** [docs/diseno-sistema-radar.md](docs/diseno-sistema-radar.md)
 - **Calidad y reconstrucción:** [docs/calidad-y-reconstruccion.md](docs/calidad-y-reconstruccion.md)
 - **Plan de mejoras:** [docs/plan-mejoras.md](docs/plan-mejoras.md)
+- **Plan de IA gratuita con OpenRouter:** [docs/plan-integracion-ia-openrouter.md](docs/plan-integracion-ia-openrouter.md)
 - **Decisiones (ADR):** [docs/adr/](docs/adr/)
 - **API (OAS):** [api/openapi.yaml](api/openapi.yaml) · guía en [docs/api.md](docs/api.md)
 - **Exposición duckdns + login por código:** [docs/exposicion-duckdns.md](docs/exposicion-duckdns.md)
@@ -97,6 +98,6 @@ scripts/ci-local.sh    # tasks validate + cargo check + drift OAS + gen:api + np
 
 ### Webs sugeridas y auditoría técnica
 
-La ficha incorpora descubrimiento de webs, correcciones con procedencia y la pestaña Auditoría con Lighthouse 13.6.0 y SiteOne 2.5.1, independientes en móvil y escritorio. [Uso, instalación del worker, límites y recuperación](docs/webs-y-auditoria-tecnica.md). Sin clave Tavily siguen disponibles las fuentes públicas y la corrección manual.
+La ficha incorpora descubrimiento de webs con decisiones gratuitas de OpenRouter, correcciones con procedencia y la pestaña Auditoría con Lighthouse 13.6.0 y SiteOne 2.5.1. [Uso, configuración y límites](docs/webs-y-auditoria-tecnica.md). Sin clave OpenRouter siguen disponibles las fuentes públicas y la corrección manual.
 
 La búsqueda regional clasifica además rubros comerciales detallados y muestra cobertura por rubro. Los objetivos de nombres concretos se mantienen en [`data/objetivos.csv`](data/objetivos.csv); se pueden incorporar y revisar con `radar targets --csv data/objetivos.csv` y `radar targets`.

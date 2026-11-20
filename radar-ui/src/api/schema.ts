@@ -532,6 +532,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/negocios/{id}/ia-informe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ai_report"];
+        put: operations["save_ai_report_revision"];
+        post: operations["generate_ai_report"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/negocios/{id}/ia-revisiones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["save_ai_review"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/negocios/{id}/oportunidades/{servicio}": {
         parameters: {
             query?: never;
@@ -562,6 +594,70 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["set_pipeline"];
+        trace?: never;
+    };
+    "/api/negocios/{id}/seo-competidores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["seo_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/negocios/{id}/seo-competidores/sugerencias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["seo_suggest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/negocios/{id}/seo-competidores/{analysis_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["seo_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/negocios/{id}/seo-competidores/{analysis_id}/analizar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["seo_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/negocios/{id}/web": {
@@ -674,6 +770,12 @@ export interface components {
             finding_key: string;
             motivo?: string | null;
             report_id: string;
+        };
+        ActualizarRevisionIA: {
+            decision: string;
+            estado: string;
+            motivo?: string | null;
+            valor?: string | null;
         };
         AuditParams: {
             /** Format: int64 */
@@ -870,6 +972,20 @@ export interface components {
         GuardarDiagnosticoVisita: {
             capturas: components["schemas"]["CapturaVisita"][];
         };
+        GuardarRevisionInformeIA: {
+            texto: string;
+        };
+        InformeIA: {
+            creado: string;
+            evidencias: unknown;
+            /** Format: int64 */
+            id: number;
+            modelo: string;
+            /** Format: int64 */
+            negocio_id: number;
+            texto: string;
+            url: string;
+        };
         Job: {
             actualizado: string;
             creado: string;
@@ -1059,11 +1175,47 @@ export interface components {
             motivo?: string | null;
             report_id: string;
         };
+        RevisionIA: {
+            actualizado: string;
+            decision: string;
+            estado: string;
+            motivo?: string | null;
+            /** Format: int64 */
+            negocio_id: number;
+            valor?: string | null;
+        };
         ScanParams: {
             municipio?: string | null;
             municipios?: string[];
             navarra?: boolean;
             sector?: string | null;
+        };
+        SeleccionarSeoCompetidores: {
+            competidores: components["schemas"]["SeoCompetidor"][];
+        };
+        SeoComparacion: {
+            actualizado: string;
+            creado: string;
+            error?: string | null;
+            estado: string;
+            id: string;
+            job_id?: string | null;
+            /** Format: int64 */
+            negocio_id: number;
+            resultado: unknown;
+            seleccion: components["schemas"]["SeoCompetidor"][];
+            sugerencias: components["schemas"]["SeoCompetidor"][];
+            url_propia: string;
+        };
+        SeoCompetidor: {
+            fuentes: unknown[];
+            municipio?: string | null;
+            /** Format: int64 */
+            negocio_id?: number | null;
+            nombre: string;
+            /** Format: double */
+            puntuacion_ia?: number | null;
+            url: string;
         };
         /** @enum {string} */
         ServicioWeb: "creacion_web" | "landing" | "seo_on_page" | "hosting";
@@ -1101,7 +1253,7 @@ export interface components {
             siguiente_accion: string;
         };
         /** @enum {string} */
-        TipoJob: "scan" | "audit" | "watch" | "export" | "crawl" | "rebuild" | "discovery" | "technical";
+        TipoJob: "scan" | "audit" | "watch" | "export" | "crawl" | "rebuild" | "discovery" | "technical" | "seo_compare";
         WatchParams: {
             /** @description CSV manual opcional. Si se omite, descarga las publicaciones recientes del BORME. */
             csv?: string | null;
@@ -1130,7 +1282,9 @@ export interface components {
             /** Format: int64 */
             creditos_restantes: number;
             estado: string;
+            evaluacion_ia?: unknown;
             origen?: string | null;
+            revisiones_ia?: components["schemas"]["RevisionIA"][];
             ultima_busqueda?: string | null;
             url_confirmada?: string | null;
         };
@@ -2281,6 +2435,136 @@ export interface operations {
             };
         };
     };
+    ai_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Último borrador generado con modelo gratuito */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InformeIA"];
+                };
+            };
+            /** @description Todavía no hay informe */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    save_ai_report_revision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GuardarRevisionInformeIA"];
+            };
+        };
+        responses: {
+            /** @description Versión revisada del borrador IA guardada sin borrar el original */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InformeIA"];
+                };
+            };
+            /** @description Informe o texto no válido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
+    generate_ai_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Borrador basado en auditorías técnicas vigentes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InformeIA"];
+                };
+            };
+            /** @description No hay web confirmada o auditorías utilizables */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
+    save_ai_review: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActualizarRevisionIA"];
+            };
+        };
+        responses: {
+            /** @description Corrección o revisión humana persistida */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevisionIA"];
+                };
+            };
+            /** @description Valor de revisión no válido */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
     set_oportunidad: {
         parameters: {
             query?: never;
@@ -2344,6 +2628,144 @@ export interface operations {
             };
             /** @description No existe */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
+    seo_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoComparacion"][];
+                };
+            };
+        };
+    };
+    seo_suggest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoComparacion"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
+    seo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                analysis_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SeoComparacion"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+        };
+    };
+    seo_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+                analysis_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SeleccionarSeoCompetidores"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorApi"];
+                };
+            };
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

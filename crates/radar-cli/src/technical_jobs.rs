@@ -54,6 +54,37 @@ pub async fn discovery(st: AppState, mut job: Job) {
     }
     api::actualizar_job(&st, &mut job);
 }
+
+pub async fn seo_compare(st: AppState, mut job: Job) {
+    job.estado = EstadoJob::EnCurso;
+    job.error = None;
+    api::actualizar_job(&st, &mut job);
+    let analysis_id = job.params["analysis_id"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    let update_state = st.clone();
+    let result = radar_core::seo_competitors::ejecutar(
+        &st.store,
+        &analysis_id,
+        job.clone(),
+        move |changed| api::actualizar_job(&update_state, changed),
+    )
+    .await;
+    if let Err(error) = result {
+        job.estado = EstadoJob::Error;
+        job.error = Some(format!("{error:#}"));
+        if !analysis_id.is_empty() {
+            if let Ok(c) = st.store.lock() {
+                let _ = c.execute("UPDATE seo_comparaciones SET estado=CASE WHEN estado='obsoleta' THEN estado ELSE 'error' END,error=?2,actualizado=?3 WHERE id=?1",rusqlite::params![analysis_id,job.error,store::ahora()]);
+            }
+        }
+    } else {
+        job.estado = EstadoJob::Terminado;
+        job.error = None;
+    }
+    api::actualizar_job(&st, &mut job);
+}
 async fn discovery_inner(st: &AppState, job: &mut Job) -> Result<()> {
     let ids = {
         let c = st.store.lock().unwrap();
@@ -61,7 +92,7 @@ async fn discovery_inner(st: &AppState, job: &mut Job) -> Result<()> {
             let ids = if let Some(id) = job.params["negocio_id"].as_i64() {
                 vec![id]
             } else {
-                let mut stmt=c.prepare("SELECT id FROM negocios WHERE admisible=1 AND (web IS NULL OR web LIKE '%facebook.com%' OR web LIKE '%instagram.com%') ORDER BY id")?;
+                let mut stmt=c.prepare("SELECT id FROM negocios WHERE admisible=1 AND (web IS NULL OR web LIKE '%facebook.com%' OR web LIKE '%instagram.com%') AND NOT EXISTS(SELECT 1 FROM negocios_descartados d WHERE d.negocio_id=negocios.id) ORDER BY id")?;
                 let ids = stmt
                     .query_map([], |r| r.get::<_, i64>(0))?
                     .collect::<std::result::Result<Vec<_>, _>>()?;

@@ -10,11 +10,11 @@ Es una investigación y especificación; todavía no está integrada en la inter
 
 Radar conserva las URLs de las fuentes y protege las correcciones confirmadas frente a nuevas importaciones. El Registro de Turismo de Navarra puede aportar domicilio y localidad. Los campos que no permiten publicar sus datos se ignoran. Fuente: Gobierno de Navarra, Datos Abiertos, CC BY 4.0. Registro: https://datosabiertos.navarra.es/dataset/restaurantes-inscritos-en-el-registro-de-turismo-de-navarra
 
-La consulta usa nombre y domicilio, con localidad como alternativa. La primera respuesta orgánica de Tavily se guarda como «Web sugerida · Sin confirmar», con consulta, proveedor, posición y fecha. Se excluyen resultados identificados como publicidad. No se confía en la posición para identificar al negocio. Las redes sociales y los directorios se señalan como tales. Solo una identidad estructurada del negocio, nombre y contacto/domicilio coincidentes permiten confirmación automática. Las sugerencias ambiguas no activan auditorías atribuidas al negocio.
+La búsqueda usa OpenRouter Decisions Fast (gratuito) con nombre, localidad y datos públicos discriminantes. Las fuentes citadas se guardan como «Web sugerida · Sin confirmar», con consulta, proveedor, fecha y respuesta estructurada. Una cita no confirma por sí sola que la web pertenezca al negocio. Redes sociales, directorios, homónimos y resultados ambiguos no activan auditorías atribuidas a la empresa. Para generar el resumen del diagnóstico se usa `openrouter/free`, sin herramientas de búsqueda.
 
 En Ficha se puede abrir, confirmar o descartar una candidata e introducir una URL propia. La confirmación registra procedencia y fecha, recalcula el encaje y programa auditoría. Sin buscador configurado funcionan las fuentes públicas, la corrección manual y «Abrir búsqueda».
 
-Para habilitar Tavily, el administrador añade `TAVILY_API_KEY` a `/etc/radar.env` (permisos 600) y reinicia radar. No introducir claves en el navegador, Git o mensajes. Se usa búsqueda básica, sin respuestas de IA, máximo 1.000 créditos por mes UTC y caché local de 30 días. Se reserva el crédito antes de consultar, se detiene al agotarlo y no se contrata un plan de pago. No reutilizar la misma cuenta para otros consumidores si se quiere que el límite local refleje el total de la cuenta.
+`OPENROUTER_API_KEY` está configurada en `/etc/radar.env` (root:root, permisos 600). La clave nunca se envía al navegador ni se guarda en el repositorio. La búsqueda usa el modelo fijo `parallel/decisions-fast:free`; el informe usa `openrouter/free` con `provider.max_price` a cero. No se activa el buscador web general, que tiene tarifas propias. Radar reserva como máximo 45 solicitudes gratuitas al día entre búsqueda e informes, conserva los resultados 30 días y pausa al agotar la cuota. No hay cambio a modelos de pago ni recarga automática.
 
 ## Rubros y objetivos comerciales
 
@@ -41,7 +41,7 @@ Un sitio cada vez, pausa de 60 segundos entre sitios (`RADAR_TECH_PAUSE_SECONDS`
 
 `radar-audit.service` se ejecuta como `radar-audit`, sin acceso a la base de datos ni a `/root`, con sistema de archivos protegido y un límite duro de 1 GB sin swap. El grupo compartido solo permite intercambiar solicitudes e informes en `/var/lib/radar-audits`. El proxy valida y fija IP públicas en cada conexión y rechaza credenciales, puertos alternativos, métodos de escritura y destinos locales. Chromium conserva su sandbox. El servicio restringe además el acceso a redes privadas; loopback IPv4 queda disponible para el controlador y el proxy. Los motores consultan páginas públicas sin autenticación y respetan robots; los sitios cuya política no puede comprobarse quedan no disponibles.
 
-El servicio principal necesita el drop-in `deploy/radar-audit-spool.conf`. Ningún navegador recibe la clave Tavily, la sesión del usuario ni la base de datos.
+El servicio principal necesita el drop-in `deploy/radar-audit-spool.conf`. Ningún navegador recibe la clave OpenRouter, la sesión del usuario ni la base de datos.
 
 ## Operación y recuperación
 
@@ -68,4 +68,4 @@ nuevo; reintentar el antiguo no lo convierte en una auditoría de la URL nueva.
 
 Los originales HTML/JSON y las capturas sin seleccionar se comprimen, duran siete días y comparten un máximo global de 2 GB. Las capturas elegidas para una visita se protegen hasta 90 días mediante marcadores que respeta la limpieza automática; las siete fotos máximas de cada presentación descargada se incluyen en un HTML autónomo. Las capturas protegidas cuentan dentro de la cuota y pueden hacer que el directorio rebase el límite si se conservan muchas visitas. La descarga exige la sesión de Radar y usa adjuntos. Los resultados normalizados y la preparación de visita permanecen en SQLite. Respaldar SQLite con su API de backup (no copiar una DB activa a ciegas) y, si se desean originales, copiar también `/var/lib/radar-audits/artifacts` fuera del servidor. Un temporizador systemd crea una copia diaria SQLite en línea a las 03:15; conserva 14 días y no sobrescribe una copia del mismo día. Comprueba `systemctl list-timers radar-backup.timer` y `journalctl -u radar-backup.service`. Antes de restaurar: detener ambos servicios, conservar la DB actual y restaurar propietario/permisos; después arrancarlos y revisar los jobs.
 
-Fuentes técnicas: https://github.com/janreges/siteone-crawler · https://developer.chrome.com/docs/lighthouse/overview · https://docs.tavily.com/documentation/api-reference/endpoint/search
+Fuentes técnicas: https://github.com/janreges/siteone-crawler · https://developer.chrome.com/docs/lighthouse/overview

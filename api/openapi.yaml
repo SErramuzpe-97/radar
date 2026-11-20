@@ -1078,6 +1078,112 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}/ia-informe:
+    get:
+      tags:
+      - negocios
+      operationId: ai_report
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Último borrador generado con modelo gratuito
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InformeIA'
+        '404':
+          description: Todavía no hay informe
+    put:
+      tags:
+      - negocios
+      operationId: save_ai_report_revision
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GuardarRevisionInformeIA'
+        required: true
+      responses:
+        '200':
+          description: Versión revisada del borrador IA guardada sin borrar el original
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InformeIA'
+        '400':
+          description: Informe o texto no válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+    post:
+      tags:
+      - negocios
+      operationId: generate_ai_report
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Borrador basado en auditorías técnicas vigentes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InformeIA'
+        '400':
+          description: No hay web confirmada o auditorías utilizables
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}/ia-revisiones:
+    put:
+      tags:
+      - negocios
+      operationId: save_ai_review
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActualizarRevisionIA'
+        required: true
+      responses:
+        '200':
+          description: Corrección o revisión humana persistida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RevisionIA'
+        '400':
+          description: Valor de revisión no válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
   /api/negocios/{id}/oportunidades/{servicio}:
     patch:
       tags:
@@ -1142,6 +1248,136 @@ paths:
                 $ref: '#/components/schemas/Pipeline'
         '404':
           description: No existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}/seo-competidores:
+    get:
+      tags:
+      - negocios
+      operationId: seo_list
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SeoComparacion'
+  /api/negocios/{id}/seo-competidores/sugerencias:
+    post:
+      tags:
+      - negocios
+      operationId: seo_suggest
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeoComparacion'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+        '503':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}/seo-competidores/{analysis_id}:
+    get:
+      tags:
+      - negocios
+      operationId: seo_get
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: analysis_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeoComparacion'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+  /api/negocios/{id}/seo-competidores/{analysis_id}/analizar:
+    post:
+      tags:
+      - negocios
+      operationId: seo_start
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: analysis_id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeleccionarSeoCompetidores'
+        required: true
+      responses:
+        '202':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+        '404':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorApi'
+        '409':
+          description: ''
           content:
             application/json:
               schema:
@@ -1354,6 +1590,24 @@ components:
           - 'null'
         report_id:
           type: string
+    ActualizarRevisionIA:
+      type: object
+      required:
+      - decision
+      - estado
+      properties:
+        decision:
+          type: string
+        estado:
+          type: string
+        motivo:
+          type:
+          - string
+          - 'null'
+        valor:
+          type:
+          - string
+          - 'null'
     AuditParams:
       type: object
       properties:
@@ -1862,6 +2116,39 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CapturaVisita'
+    GuardarRevisionInformeIA:
+      type: object
+      required:
+      - texto
+      properties:
+        texto:
+          type: string
+    InformeIA:
+      type: object
+      required:
+      - id
+      - negocio_id
+      - url
+      - creado
+      - modelo
+      - texto
+      - evidencias
+      properties:
+        creado:
+          type: string
+        evidencias: {}
+        id:
+          type: integer
+          format: int64
+        modelo:
+          type: string
+        negocio_id:
+          type: integer
+          format: int64
+        texto:
+          type: string
+        url:
+          type: string
     Job:
       type: object
       required:
@@ -2346,6 +2633,31 @@ components:
           - 'null'
         report_id:
           type: string
+    RevisionIA:
+      type: object
+      required:
+      - negocio_id
+      - decision
+      - estado
+      - actualizado
+      properties:
+        actualizado:
+          type: string
+        decision:
+          type: string
+        estado:
+          type: string
+        motivo:
+          type:
+          - string
+          - 'null'
+        negocio_id:
+          type: integer
+          format: int64
+        valor:
+          type:
+          - string
+          - 'null'
     ScanParams:
       type: object
       properties:
@@ -2363,6 +2675,86 @@ components:
           type:
           - string
           - 'null'
+    SeleccionarSeoCompetidores:
+      type: object
+      required:
+      - competidores
+      properties:
+        competidores:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeoCompetidor'
+    SeoComparacion:
+      type: object
+      required:
+      - id
+      - negocio_id
+      - url_propia
+      - estado
+      - sugerencias
+      - seleccion
+      - resultado
+      - creado
+      - actualizado
+      properties:
+        actualizado:
+          type: string
+        creado:
+          type: string
+        error:
+          type:
+          - string
+          - 'null'
+        estado:
+          type: string
+        id:
+          type: string
+        job_id:
+          type:
+          - string
+          - 'null'
+        negocio_id:
+          type: integer
+          format: int64
+        resultado: {}
+        seleccion:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeoCompetidor'
+        sugerencias:
+          type: array
+          items:
+            $ref: '#/components/schemas/SeoCompetidor'
+        url_propia:
+          type: string
+    SeoCompetidor:
+      type: object
+      required:
+      - nombre
+      - url
+      - fuentes
+      properties:
+        fuentes:
+          type: array
+          items: {}
+        municipio:
+          type:
+          - string
+          - 'null'
+        negocio_id:
+          type:
+          - integer
+          - 'null'
+          format: int64
+        nombre:
+          type: string
+        puntuacion_ia:
+          type:
+          - number
+          - 'null'
+          format: double
+        url:
+          type: string
     ServicioWeb:
       type: string
       enum:
@@ -2477,6 +2869,7 @@ components:
       - rebuild
       - discovery
       - technical
+      - seo_compare
     WatchParams:
       type: object
       required:
@@ -2554,10 +2947,15 @@ components:
           format: int64
         estado:
           type: string
+        evaluacion_ia: {}
         origen:
           type:
           - string
           - 'null'
+        revisiones_ia:
+          type: array
+          items:
+            $ref: '#/components/schemas/RevisionIA'
         ultima_busqueda:
           type:
           - string

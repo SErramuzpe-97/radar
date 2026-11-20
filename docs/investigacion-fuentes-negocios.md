@@ -84,9 +84,9 @@ usarlo como indicador de crecimiento.
 La búsqueda regional actual lee el extracto OSM de Geofabrik; los escaneos
 municipales usan Overpass. BORME cubre constituciones, no un censo de negocios.
 El registro de restaurantes se consulta para enriquecer negocios existentes,
-sin importar sus establecimientos como candidatos nuevos. El buscador Tavily
-está implementado para localizar webs de negocios conocidos, pero su clave no
-está configurada en este despliegue.
+sin importar sus establecimientos como candidatos nuevos. La búsqueda de webs
+se implementa con OpenRouter Decisions Fast en modalidad gratuita y requiere
+configurar `OPENROUTER_API_KEY` en el entorno del servicio.
 
 ## Fuentes verificadas con sus APIs reales
 

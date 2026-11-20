@@ -16,6 +16,7 @@ Generado con `scripts/tasks.sh board`. No editar a mano.
 
 | ID | Título | Asignado | Fase | Deps |
 |---|---|---|---|---|
+| T-039 | Calibrar y validar la feature SEO competitivo antes de activarla | agent:codex | F2 | T-038 |
 
 ## blocked
 
@@ -56,4 +57,13 @@ Generado con `scripts/tasks.sh board`. No editar a mano.
 | T-028 | Mapa por zona visible con agrupación acotada para 55k empresas | agent:codex | F2 |  |
 | T-029 | Filtros de auditoría rápidos con índices y cancelación de consultas | agent:codex | F2 |  |
 | T-030 | Desbloquear auditorías técnicas tras cambios de URL | agent:codex | F2 |  |
+| T-031 | Diseñar integración IA gratuita para validar empresas, webs e informes | agent:codex | F2 |  |
+| T-032 | Integrar búsqueda, evaluación e informes gratuitos con OpenRouter | agent:codex | F2 | T-031 |
+| T-033 | Definir plan de análisis SEO competitivo con IA | agent:codex | F2 | T-032 |
+| T-034 | Definir contrato y persistencia del análisis SEO competitivo | unassigned | F2 | T-033 |
+| T-035 | Descubrir y seleccionar competidores con OpenRouter gratuito | agent:codex | F2 | T-034 |
+| T-036 | Recoger evidencia SEO comparable con crawl seguro y datos recientes | agent:codex | F2 | T-034 T-035 |
+| T-037 | Generar comparación SEO y recomendaciones con evidencia | agent:codex | F2 | T-036 |
+| T-038 | Añadir flujo de comparación SEO a Diagnóstico y dossier | agent:codex | F2 | T-034 T-035 T-036 T-037 |
+| T-040 | Corregir bloqueo de la web por consultas automáticas sin índices | agent:codex-performance | F-infra |  |
 

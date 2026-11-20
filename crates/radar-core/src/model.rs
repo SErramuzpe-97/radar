@@ -131,6 +131,7 @@ pub enum TipoJob {
     Rebuild,
     Discovery,
     Technical,
+    SeoCompare,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
@@ -632,6 +633,26 @@ pub struct WebInfo {
     pub buscador_configurado: bool,
     pub creditos_restantes: i64,
     pub candidatas: Vec<WebCandidata>,
+    #[serde(default)]
+    pub evaluacion_ia: Option<serde_json::Value>,
+    #[serde(default)]
+    pub revisiones_ia: Vec<RevisionIA>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct RevisionIA {
+    pub negocio_id: i64,
+    pub decision: String,
+    pub estado: String,
+    pub valor: Option<String>,
+    pub motivo: Option<String>,
+    pub actualizado: String,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ActualizarRevisionIA {
+    pub decision: String,
+    pub estado: String,
+    pub valor: Option<String>,
+    pub motivo: Option<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ConfirmarWeb {
@@ -705,6 +726,47 @@ pub struct EstadoDiagnosticoVisita {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct GuardarDiagnosticoVisita {
     pub capturas: Vec<CapturaVisita>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct InformeIA {
+    pub id: i64,
+    pub negocio_id: i64,
+    pub url: String,
+    pub creado: String,
+    pub modelo: String,
+    pub texto: String,
+    pub evidencias: serde_json::Value,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct GuardarRevisionInformeIA {
+    pub texto: String,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct SeoCompetidor {
+    pub negocio_id: Option<i64>,
+    pub nombre: String,
+    pub municipio: Option<String>,
+    pub url: String,
+    pub puntuacion_ia: Option<f64>,
+    pub fuentes: Vec<serde_json::Value>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct SeoComparacion {
+    pub id: String,
+    pub negocio_id: i64,
+    pub url_propia: String,
+    pub estado: String,
+    pub sugerencias: Vec<SeoCompetidor>,
+    pub seleccion: Vec<SeoCompetidor>,
+    pub resultado: serde_json::Value,
+    pub creado: String,
+    pub actualizado: String,
+    pub job_id: Option<String>,
+    pub error: Option<String>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct SeleccionarSeoCompetidores {
+    pub competidores: Vec<SeoCompetidor>,
 }
 #[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
 pub struct BusquedaWebParams {

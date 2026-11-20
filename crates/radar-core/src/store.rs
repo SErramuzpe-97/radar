@@ -69,6 +69,11 @@ CREATE TABLE IF NOT EXISTS negocios_descartados (
   fecha TEXT NOT NULL,
   motivo TEXT
 );
+CREATE TABLE IF NOT EXISTS ia_overrides (
+  negocio_id INTEGER PRIMARY KEY REFERENCES negocios(id) ON DELETE CASCADE,
+  motivo TEXT NOT NULL,
+  actualizado TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS pipeline (
   negocio_id INTEGER PRIMARY KEY REFERENCES negocios(id),
   estado TEXT NOT NULL DEFAULT 'nuevo',
@@ -100,6 +105,12 @@ CREATE TABLE IF NOT EXISTS jobs (
   resumen TEXT
 );
 CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL);
+-- Los planificadores consultan los trabajos activos por cada negocio. Sin estos
+-- índices recorren todo el historial mientras mantienen el bloqueo del Store.
+CREATE INDEX IF NOT EXISTS idx_jobs_tipo_estado ON jobs(tipo,estado);
+CREATE INDEX IF NOT EXISTS idx_jobs_discovery_lookup ON jobs(
+  CAST(json_extract(params,'$.negocio_id') AS INTEGER),estado
+) WHERE tipo='discovery';
 CREATE TABLE IF NOT EXISTS job_items (
   job_id TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
   item_key TEXT NOT NULL,
@@ -231,6 +242,7 @@ pub fn abrir(db_path: &str) -> Result<Store> {
     conn.pragma_update(None, "foreign_keys", "ON")?;
     conn.execute_batch(SCHEMA)?;
     migrar(&conn)?;
+    crate::seo_competitors::init(&conn)?;
     let has_admisible = {
         let mut stmt = conn.prepare("PRAGMA table_info(negocios)")?;
         let columns = stmt
@@ -863,10 +875,13 @@ fn filtros_negocios_sql(f: &FiltrosNegocios) -> Result<(String, Vec<rusqlite::ty
     }
     if let Some(e) = &f.estado_web {
         if e == "CON_WEB" {
-            wh.push("web IS NOT NULL AND web <> ''
+            wh.push(
+                "web IS NOT NULL AND web <> ''
                 AND lower(web) NOT LIKE '%facebook.com%' AND lower(web) NOT LIKE '%instagram.com%'
                 AND lower(web) NOT LIKE '%tiktok.com%' AND lower(web) NOT LIKE '%twitter.com%'
-                AND lower(web) NOT LIKE '%x.com%' AND lower(web) NOT LIKE '%linkedin.com%'".into());
+                AND lower(web) NOT LIKE '%x.com%' AND lower(web) NOT LIKE '%linkedin.com%'"
+                    .into(),
+            );
         } else {
             wh.push(format!("{ULTIMA_AUDITORIA} = ?"));
             args.push(Value::from(e.clone()));
@@ -1282,7 +1297,12 @@ pub fn actualizar_descartados(conn: &Connection, req: &ActualizarDescartados) ->
                  SELECT id,?2,?3 FROM negocios WHERE id=?1 AND admisible=1",
                 params![id, fecha, req.motivo.as_deref()],
             )?;
+            conn.execute("INSERT INTO ia_overrides(negocio_id,motivo,actualizado) VALUES(?1,'descartado_manual',?2) ON CONFLICT(negocio_id) DO UPDATE SET motivo='descartado_manual',actualizado=excluded.actualizado",params![id,fecha])?;
         } else {
+            let automatic:bool=conn.query_row("SELECT EXISTS(SELECT 1 FROM negocios_descartados WHERE negocio_id=?1 AND COALESCE(motivo,'') LIKE 'ia:%')",[id],|r|r.get(0))?;
+            if automatic {
+                conn.execute("INSERT INTO ia_overrides(negocio_id,motivo,actualizado) VALUES(?1,'restaurado_manual',?2) ON CONFLICT(negocio_id) DO UPDATE SET motivo='restaurado_manual',actualizado=excluded.actualizado",params![id,fecha])?;
+            }
             total += conn.execute(
                 "DELETE FROM negocios_descartados WHERE negocio_id=?1",
                 params![id],
@@ -1957,6 +1977,7 @@ pub fn insert_job(conn: &Connection, job: &Job) -> Result<()> {
                 TipoJob::Rebuild => "rebuild",
                 TipoJob::Discovery => "discovery",
                 TipoJob::Technical => "technical",
+                TipoJob::SeoCompare => "seo_compare",
             },
             match job.estado {
                 EstadoJob::Pendiente => "pendiente",
@@ -1987,6 +2008,7 @@ fn row_job(row: &rusqlite::Row) -> rusqlite::Result<Job> {
             "rebuild" => TipoJob::Rebuild,
             "discovery" => TipoJob::Discovery,
             "technical" => TipoJob::Technical,
+            "seo_compare" => TipoJob::SeoCompare,
             _ => TipoJob::Export,
         },
         estado: match row.get::<_, String>(2)?.as_str() {
@@ -2065,6 +2087,7 @@ pub fn tipo_job_activo(conn: &Connection, tipo: TipoJob) -> Result<bool> {
         TipoJob::Rebuild => "rebuild",
         TipoJob::Discovery => "discovery",
         TipoJob::Technical => "technical",
+        TipoJob::SeoCompare => "seo_compare",
     };
     Ok(conn.query_row("SELECT EXISTS(SELECT 1 FROM jobs WHERE tipo=?1 AND estado IN ('pendiente','en_curso','encurso'))", params![tipo], |r| r.get(0))?)
 }

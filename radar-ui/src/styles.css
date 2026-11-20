@@ -409,6 +409,18 @@ main.vista-tabla, main.vista-mapa { overflow: hidden; }
 .web-confirmada { display:flex;align-items:flex-start;flex-wrap:wrap;gap:8px; }
 .web-candidata { padding:12px; }
 .diagnostico-web { padding-top:8px; }
+.seo-competidores { margin:18px 0;padding:16px;border:1px solid var(--borde);border-radius:12px;background:var(--panel); }
+.seo-competidores>header { display:flex;align-items:flex-start;justify-content:space-between;gap:12px; }
+.seo-competidores h3 { margin:0 0 6px; }
+.seo-candidatos { display:grid;gap:8px;margin:12px 0; }
+.seo-candidato { display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--borde);border-radius:8px; }
+.seo-candidato small { display:block;overflow-wrap:anywhere;color:var(--muted); }
+.seo-extra { display:flex;gap:8px;flex-wrap:wrap;margin:10px 0; }
+.seo-extra input { flex:1 1 220px; }
+.seo-sitio { margin:8px 0;padding:10px;border:1px solid var(--borde);border-radius:8px;overflow-wrap:anywhere; }
+.seo-competidores table { width:100%;border-collapse:collapse;margin:12px 0; }
+.seo-competidores th,.seo-competidores td { padding:7px;border-bottom:1px solid var(--borde);text-align:left; }
+@media(max-width:650px){.seo-competidores>header{display:block}.seo-competidores>header button{margin:8px 0}.seo-competidores table{font-size:.82rem}}
 .diagnostico-cabecera { display:grid;gap:14px; }
 .diagnostico-cabecera h3 { margin:0; }
 .diagnostico-web-toolbar { display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0; }

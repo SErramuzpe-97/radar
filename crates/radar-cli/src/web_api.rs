@@ -7,10 +7,24 @@ use axum::{
     Json, Router,
 };
 use radar_core::{model::*, store, technical, web};
+use serde_json::json;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/negocios/{id}/web", get(info).patch(confirm))
+        .route("/api/negocios/{id}/seo-competidores", get(seo_list))
+        .route(
+            "/api/negocios/{id}/seo-competidores/sugerencias",
+            post(seo_suggest),
+        )
+        .route(
+            "/api/negocios/{id}/seo-competidores/{analysis_id}",
+            get(seo_get),
+        )
+        .route(
+            "/api/negocios/{id}/seo-competidores/{analysis_id}/analizar",
+            post(seo_start),
+        )
         .route("/api/negocios/{id}/web/descubrir", post(discover))
         .route(
             "/api/negocios/{id}/web/candidatas/{candidate}",
@@ -29,6 +43,16 @@ pub fn routes() -> Router<AppState> {
             get(visit_state).put(save_visit_state),
         )
         .route(
+            "/api/negocios/{id}/ia-informe",
+            get(ai_report)
+                .post(generate_ai_report)
+                .put(save_ai_report_revision),
+        )
+        .route(
+            "/api/negocios/{id}/ia-revisiones",
+            axum::routing::put(save_ai_review),
+        )
+        .route(
             "/api/auditorias-tecnicas/{id}/archivo/{kind}",
             get(download),
         )
@@ -39,10 +63,272 @@ pub fn routes() -> Router<AppState> {
         .route("/api/jobs/discovery", post(bulk))
 }
 
+#[utoipa::path(get,path="/api/negocios/{id}/seo-competidores",params(("id"=i64,Path)),tag="negocios",responses((status=200,body=[SeoComparacion])))]
+pub async fn seo_list(
+    State(st): State<AppState>,
+    Path(id): Path<i64>,
+) -> ApiResult<Json<Vec<SeoComparacion>>> {
+    let c = st.store.lock().unwrap();
+    Ok(Json(
+        radar_core::seo_competitors::list(&c, id).map_err(err500)?,
+    ))
+}
+
+#[utoipa::path(get,path="/api/negocios/{id}/seo-competidores/{analysis_id}",params(("id"=i64,Path),("analysis_id"=String,Path)),tag="negocios",responses((status=200,body=SeoComparacion),(status=404,body=ErrorApi)))]
+pub async fn seo_get(
+    State(st): State<AppState>,
+    Path((id, analysis_id)): Path<(i64, String)>,
+) -> ApiResult<Json<SeoComparacion>> {
+    let c = st.store.lock().unwrap();
+    radar_core::seo_competitors::get(&c, id, &analysis_id)
+        .map_err(err500)?
+        .map(Json)
+        .ok_or_else(|| ApiError(StatusCode::NOT_FOUND, "Análisis SEO no encontrado".into()))
+}
+
+#[utoipa::path(post,path="/api/negocios/{id}/seo-competidores/sugerencias",params(("id"=i64,Path)),tag="negocios",responses((status=200,body=SeoComparacion),(status=400,body=ErrorApi),(status=503,body=ErrorApi)))]
+pub async fn seo_suggest(
+    State(st): State<AppState>,
+    Path(id): Path<i64>,
+) -> ApiResult<Json<SeoComparacion>> {
+    if !radar_core::seo_competitors::enabled() {
+        return Err(ApiError(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "La comparación SEO está desactivada".into(),
+        ));
+    }
+    radar_core::seo_competitors::sugerir(&st.store, id)
+        .await
+        .map(Json)
+        .map_err(|e| ApiError(StatusCode::BAD_REQUEST, e.to_string()))
+}
+
+#[utoipa::path(post,path="/api/negocios/{id}/seo-competidores/{analysis_id}/analizar",params(("id"=i64,Path),("analysis_id"=String,Path)),request_body=SeleccionarSeoCompetidores,tag="negocios",responses((status=202,body=Job),(status=400,body=ErrorApi),(status=404,body=ErrorApi),(status=409,body=ErrorApi)))]
+pub async fn seo_start(
+    State(st): State<AppState>,
+    Path((id, analysis_id)): Path<(i64, String)>,
+    Json(req): Json<SeleccionarSeoCompetidores>,
+) -> ApiResult<(StatusCode, Json<Job>)> {
+    if !radar_core::seo_competitors::enabled() {
+        return Err(ApiError(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "La comparación SEO está desactivada".into(),
+        ));
+    }
+    let job = {
+        let c = st.store.lock().unwrap();
+        if store::tipo_job_activo(&c, TipoJob::SeoCompare).map_err(err500)? {
+            return Err(ApiError(
+                StatusCode::CONFLICT,
+                "Ya hay una comparación SEO activa".into(),
+            ));
+        }
+        let prior = radar_core::seo_competitors::get(&c, id, &analysis_id)
+            .map_err(err500)?
+            .ok_or_else(|| ApiError(StatusCode::NOT_FOUND, "Análisis SEO no encontrado".into()))?;
+        let current = web::huella_evaluacion(&c, id).map_err(err500)?;
+        if prior.resultado["huella_entrada"].as_str() != Some(current.as_str()) {
+            return Err(ApiError(
+                StatusCode::CONFLICT,
+                "La ficha cambió desde que se propusieron competidores; vuelve a buscarlos".into(),
+            ));
+        }
+        radar_core::seo_competitors::guardar_seleccion(&c, id, &analysis_id, &req.competidores)
+            .map_err(|e| ApiError(StatusCode::BAD_REQUEST, e.to_string()))?;
+        let now = store::ahora();
+        let job = Job {
+            id: uuid::Uuid::new_v4().to_string(),
+            tipo: TipoJob::SeoCompare,
+            estado: EstadoJob::Pendiente,
+            params: json!({"analysis_id":analysis_id,"negocio_id":id}),
+            hechos: 0,
+            total: 0,
+            creado: now.clone(),
+            actualizado: now,
+            error: None,
+            resumen: None,
+        };
+        store::insert_job(&c, &job).map_err(err500)?;
+        radar_core::seo_competitors::enlazar_job(&c, &analysis_id, &job.id).map_err(err500)?;
+        job
+    };
+    let response = job.clone();
+    tokio::spawn(crate::technical_jobs::seo_compare(st, job));
+    Ok((StatusCode::ACCEPTED, Json(response)))
+}
+
+#[utoipa::path(get,path="/api/negocios/{id}/ia-informe",params(("id"=i64,Path)),tag="negocios",responses((status=200,body=InformeIA,description="Último borrador generado con modelo gratuito"),(status=404,description="Todavía no hay informe")))]
+pub async fn ai_report(
+    State(st): State<AppState>,
+    Path(id): Path<i64>,
+) -> ApiResult<Json<InformeIA>> {
+    let c = st.store.lock().unwrap();
+    web::ultimo_informe_ia(&c, id)
+        .map_err(err500)?
+        .map(Json)
+        .ok_or_else(|| ApiError(StatusCode::NOT_FOUND, "Todavía no hay informe IA".into()))
+}
+
+#[utoipa::path(post,path="/api/negocios/{id}/ia-informe",params(("id"=i64,Path)),tag="negocios",responses((status=200,body=InformeIA,description="Borrador basado en auditorías técnicas vigentes"),(status=400,body=ErrorApi,description="No hay web confirmada o auditorías utilizables")))]
+pub async fn generate_ai_report(
+    State(st): State<AppState>,
+    Path(id): Path<i64>,
+) -> ApiResult<Json<InformeIA>> {
+    let (name, url, evidence) = {
+        let c = st.store.lock().unwrap();
+        let negocio = store::get_negocio(&c, id)
+            .map_err(err500)?
+            .ok_or_else(|| ApiError(StatusCode::NOT_FOUND, "Negocio no encontrado".into()))?;
+        let url = negocio.web.clone().ok_or_else(|| {
+            ApiError(
+                StatusCode::BAD_REQUEST,
+                "Confirma una web antes de generar el informe".into(),
+            )
+        })?;
+        let current:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM web_estado WHERE negocio_id=?1 AND url_confirmada=?2 AND ((estado='confirmada' AND origen IN ('correccion_usuario','confirmacion_usuario')) OR (estado='verificada_automatica' AND origen='verificacion_automatica'))) AND NOT EXISTS(SELECT 1 FROM negocios_descartados WHERE negocio_id=?1)",rusqlite::params![id,url],|r|r.get(0)).map_err(|e|err500(e.into()))?;
+        if !current {
+            return Err(ApiError(
+                StatusCode::BAD_REQUEST,
+                "La web no está confirmada o el negocio está descartado".into(),
+            ));
+        }
+        let evidence = web::evidencia_auditoria_para_ia(&c, id, &url).map_err(err500)?;
+        if evidence["informes"].as_array().is_none_or(Vec::is_empty) {
+            return Err(ApiError(
+                StatusCode::BAD_REQUEST,
+                "No hay auditorías técnicas completas o parciales para esta web".into(),
+            ));
+        }
+        if !web::reservar_credito_ia(&c).map_err(err500)? {
+            return Err(ApiError(
+                StatusCode::TOO_MANY_REQUESTS,
+                "Se agotaron las solicitudes gratuitas de IA de hoy; se reanudarán mañana".into(),
+            ));
+        }
+        (negocio.nombre, url, evidence)
+    };
+    let fingerprint = web::huella_valor(&evidence).map_err(err500)?;
+    let (texto, modelo) = match radar_core::openrouter::report(&name, &url, &evidence).await {
+        Ok(value) => value,
+        Err(e) => {
+            let c = st.store.lock().unwrap();
+            web::registrar_ejecucion_ia(
+                &c,
+                id,
+                "informe",
+                &fingerprint,
+                radar_core::openrouter::CHAT_MODEL,
+                None,
+                "error",
+                &json!({}),
+                &evidence,
+                &json!({}),
+                Some(&e.to_string()),
+            )
+            .map_err(err500)?;
+            return Err(ApiError(
+                StatusCode::SERVICE_UNAVAILABLE,
+                format!("No se generó el informe gratuito: {e}"),
+            ));
+        }
+    };
+    let c = st.store.lock().unwrap();
+    let still_current:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM negocios n JOIN web_estado w ON w.negocio_id=n.id WHERE n.id=?1 AND n.web=?2 AND w.url_confirmada=?2 AND n.admisible=1 AND NOT EXISTS(SELECT 1 FROM negocios_descartados d WHERE d.negocio_id=n.id))",rusqlite::params![id,url],|r|r.get(0)).map_err(|e|err500(e.into()))?;
+    if !still_current {
+        web::registrar_ejecucion_ia(
+            &c,
+            id,
+            "informe",
+            &fingerprint,
+            radar_core::openrouter::CHAT_MODEL,
+            Some(&modelo),
+            "obsoleto",
+            &json!({"texto":texto}),
+            &evidence,
+            &json!({}),
+            None,
+        )
+        .map_err(err500)?;
+        return Err(ApiError(
+            StatusCode::CONFLICT,
+            "La web cambió o el negocio se descartó durante la generación; vuelve a intentarlo"
+                .into(),
+        ));
+    }
+    let current_evidence = web::evidencia_auditoria_para_ia(&c, id, &url).map_err(err500)?;
+    if web::huella_valor(&current_evidence).map_err(err500)? != fingerprint {
+        web::registrar_ejecucion_ia(
+            &c,
+            id,
+            "informe",
+            &fingerprint,
+            radar_core::openrouter::CHAT_MODEL,
+            Some(&modelo),
+            "obsoleto",
+            &json!({"texto":texto}),
+            &evidence,
+            &json!({}),
+            None,
+        )
+        .map_err(err500)?;
+        return Err(ApiError(
+            StatusCode::CONFLICT,
+            "Las auditorías cambiaron durante la generación; el borrador no se aplicó".into(),
+        ));
+    }
+    let report =
+        web::guardar_informe_ia(&c, id, &url, &modelo, &texto, &evidence).map_err(err500)?;
+    web::registrar_ejecucion_ia(
+        &c,
+        id,
+        "informe",
+        &fingerprint,
+        radar_core::openrouter::CHAT_MODEL,
+        Some(&modelo),
+        "aplicada",
+        &json!({"texto":texto}),
+        &evidence,
+        &json!({}),
+        None,
+    )
+    .map_err(err500)?;
+    Ok(Json(report))
+}
+
+#[utoipa::path(put,path="/api/negocios/{id}/ia-informe",params(("id"=i64,Path)),request_body=GuardarRevisionInformeIA,tag="negocios",responses((status=200,body=InformeIA,description="Versión revisada del borrador IA guardada sin borrar el original"),(status=400,body=ErrorApi,description="Informe o texto no válido")))]
+pub async fn save_ai_report_revision(
+    State(st): State<AppState>,
+    Path(id): Path<i64>,
+    Json(req): Json<GuardarRevisionInformeIA>,
+) -> ApiResult<Json<InformeIA>> {
+    let c = st.store.lock().unwrap();
+    let current:bool=c.query_row("SELECT EXISTS(SELECT 1 FROM negocios n JOIN web_estado w ON w.negocio_id=n.id JOIN informes_ia r ON r.negocio_id=n.id WHERE n.id=?1 AND n.web=r.url AND w.url_confirmada=r.url AND n.admisible=1 AND NOT EXISTS(SELECT 1 FROM negocios_descartados d WHERE d.negocio_id=n.id))",[id],|r|r.get(0)).map_err(|e|err500(e.into()))?;
+    if !current {
+        return Err(ApiError(
+            StatusCode::CONFLICT,
+            "El informe ya no corresponde a la web vigente del negocio".into(),
+        ));
+    }
+    web::guardar_revision_informe_ia(&c, id, &req.texto)
+        .map(Json)
+        .map_err(|error| ApiError(StatusCode::BAD_REQUEST, error.to_string()))
+}
+
 #[utoipa::path(get,path="/api/negocios/{id}/web",params(("id"=i64,Path)),tag="negocios",responses((status=200,body=WebInfo,description="Web confirmada, candidatas y búsqueda disponible")))]
 pub async fn info(State(st): State<AppState>, Path(id): Path<i64>) -> ApiResult<Json<WebInfo>> {
     let c = st.store.lock().unwrap();
     Ok(Json(web::info(&c, id).map_err(err500)?))
+}
+#[utoipa::path(put,path="/api/negocios/{id}/ia-revisiones",params(("id"=i64,Path)),request_body=ActualizarRevisionIA,tag="negocios",responses((status=200,body=RevisionIA,description="Corrección o revisión humana persistida"),(status=400,body=ErrorApi,description="Valor de revisión no válido")))]
+pub async fn save_ai_review(
+    State(st): State<AppState>,
+    Path(id): Path<i64>,
+    Json(req): Json<ActualizarRevisionIA>,
+) -> ApiResult<Json<RevisionIA>> {
+    let c = st.store.lock().unwrap();
+    web::actualizar_revision_ia(&c, id, &req)
+        .map(Json)
+        .map_err(|error| ApiError(StatusCode::BAD_REQUEST, error.to_string()))
 }
 #[utoipa::path(patch,path="/api/negocios/{id}/web",params(("id"=i64,Path)),request_body=ConfirmarWeb,tag="negocios",responses((status=200,body=WebInfo,description="Web confirmada; auditoría programada"),(status=400,body=ErrorApi,description="URL no válida")))]
 pub async fn confirm(

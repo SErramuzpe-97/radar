@@ -1187,6 +1187,7 @@ async fn retry_job(
     let params = job.params.clone();
     match job.tipo {
         TipoJob::Discovery => tokio::spawn(crate::technical_jobs::discovery(st, job)),
+        TipoJob::SeoCompare => tokio::spawn(crate::technical_jobs::seo_compare(st, job)),
         TipoJob::Technical => tokio::spawn(async {}),
         TipoJob::Rebuild => tokio::spawn(crate::rebuild::ejecutar(st, job)),
         TipoJob::Scan => tokio::spawn(ejecutar_scan_job(
@@ -1310,16 +1311,17 @@ async fn stats(State(st): State<AppState>) -> ApiResult<Json<Stats>> {
         lanzar_crawl, list_fuentes, create_fuente, update_fuente, list_fuentes_candidatas, update_fuente_candidata,
         list_tareas, cobertura, list_duplicados, fusionar_duplicado, descartar_duplicado, list_plantillas, create_plantilla, list_borradores, create_borrador,
         export, stats, clasificacion,
-        crate::web_api::info, crate::web_api::confirm, crate::web_api::discover, crate::web_api::discard, crate::web_api::report, crate::web_api::reviews, crate::web_api::save_review, crate::web_api::visit_state, crate::web_api::save_visit_state, crate::web_api::launch, crate::web_api::download, crate::web_api::preview, crate::web_api::bulk,
+        crate::web_api::info, crate::web_api::confirm, crate::web_api::discover, crate::web_api::discard, crate::web_api::report, crate::web_api::reviews, crate::web_api::save_review, crate::web_api::visit_state, crate::web_api::save_visit_state, crate::web_api::launch, crate::web_api::download, crate::web_api::preview, crate::web_api::bulk, crate::web_api::ai_report, crate::web_api::generate_ai_report, crate::web_api::save_ai_report_revision, crate::web_api::save_ai_review, crate::web_api::seo_list, crate::web_api::seo_get, crate::web_api::seo_suggest, crate::web_api::seo_start,
         crate::auth::request_code, crate::auth::verify, crate::auth::me, crate::auth::logout
     ),
     components(schemas(
         Negocio, Auditoria, Pipeline, Evento, Job, Stats, ParEtiqueta, OportunidadServicio, ConversionServicio,
         PaginaNegocios, NegocioDetalle, RespuestaMapa, PuntoMapa, ZonaMapa, ScanParams, AuditParams, WatchParams,
-        WebInfo, WebCandidata, ConfirmarWeb, AuditoriaTecnica, EstadoAuditoriaTecnica, RevisionHallazgo, ActualizarRevisionHallazgo, CapturaVisita, CapturaCatalogoVisita, EstadoDiagnosticoVisita, GuardarDiagnosticoVisita, BusquedaWebParams, ResumenClasificacion, Fuente, NuevaFuente, CambiarFuenteRequest, CrawlParams, FuenteCandidata, EstadoCandidataRequest,
+        WebInfo, WebCandidata, ConfirmarWeb, RevisionIA, ActualizarRevisionIA, AuditoriaTecnica, EstadoAuditoriaTecnica, RevisionHallazgo, ActualizarRevisionHallazgo, CapturaVisita, CapturaCatalogoVisita, EstadoDiagnosticoVisita, GuardarDiagnosticoVisita, InformeIA, GuardarRevisionInformeIA, BusquedaWebParams, ResumenClasificacion, Fuente, NuevaFuente, CambiarFuenteRequest, CrawlParams, FuenteCandidata, EstadoCandidataRequest,
         TareaSeguimiento, CoberturaMunicipio, CandidatoDuplicado, FusionDuplicado, PlantillaContacto, NuevaPlantillaContacto, NuevoBorrador, BorradorContacto,
         SetPipelineRequest, SetOportunidadRequest, ActualizarDescartados, ResultadoDescartados, NuevoEvento, EstadoWeb, EstadoPipeline, EstadoOportunidad, ServicioWeb, TipoJob, EstadoJob, ErrorApi,
         AuthRequest, AuthVerify, AuthMe, MensajeOk
+        , SeoCompetidor, SeoComparacion, SeleccionarSeoCompetidores
     ))
 )]
 pub struct ApiDoc;
@@ -1497,6 +1499,9 @@ fn reanudar_jobs(st: &AppState) -> anyhow::Result<()> {
                 let params = job.params.clone();
                 match job.tipo {
                     TipoJob::Technical => {}
+                    TipoJob::SeoCompare => {
+                        crate::technical_jobs::seo_compare(st.clone(), job).await
+                    }
                     TipoJob::Discovery => crate::technical_jobs::discovery(st.clone(), job).await,
                     TipoJob::Rebuild => crate::rebuild::ejecutar(st.clone(), job).await,
                     TipoJob::Scan => match serde_json::from_value(params) {

@@ -216,11 +216,11 @@ rubros, sinónimos y variantes de nombres; priorizar huecos de cobertura y distr
 el trabajo para no agotar cuotas en combinaciones repetidas.
 
 Reutilizar el adaptador de buscador con caché, reserva de presupuesto, deduplicación
-de consultas y límites. El despliegue actual no tiene clave Tavily: las fuentes
-abiertas funcionarán sin ella, y las consultas que necesiten proveedor quedarán
-identificadas como no ejecutadas. Mantener el límite gratuito configurado, sin
-activar facturación. Una búsqueda nunca sustituye evidencia por una respuesta
-generada ni confirma una web por su posición.
+de consultas y límites. Las consultas web usan OpenRouter Decisions Fast en
+modalidad gratuita y se pausan si `OPENROUTER_API_KEY` no está configurada o se
+agota el cupo diario. Mantener el límite gratuito configurado, sin activar
+facturación. Una búsqueda nunca sustituye evidencia por una respuesta generada
+ni confirma una web por su posición.
 
 Los resultados registrarán consulta exacta, proveedor, fecha, URLs y contraste de
 identidad. Una URL sugerida entrará en el flujo manual definido en E1.

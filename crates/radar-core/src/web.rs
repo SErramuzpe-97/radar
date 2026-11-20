@@ -22,9 +22,27 @@ CREATE INDEX IF NOT EXISTS idx_tecnica_negocio_url_fecha ON auditorias_tecnicas(
 CREATE TABLE IF NOT EXISTS auditoria_hallazgo_revision(negocio_id INTEGER NOT NULL REFERENCES negocios(id) ON DELETE CASCADE,report_id TEXT NOT NULL REFERENCES auditorias_tecnicas(id) ON DELETE CASCADE,finding_key TEXT NOT NULL,estado TEXT NOT NULL,motivo TEXT,actualizado TEXT NOT NULL,PRIMARY KEY(report_id,finding_key));
 CREATE INDEX IF NOT EXISTS idx_hallazgo_revision_negocio ON auditoria_hallazgo_revision(negocio_id,actualizado DESC);
 CREATE TABLE IF NOT EXISTS diagnostico_visitas(negocio_id INTEGER PRIMARY KEY REFERENCES negocios(id) ON DELETE CASCADE,estado TEXT NOT NULL DEFAULT '{}',actualizado TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS informes_ia(id INTEGER PRIMARY KEY,negocio_id INTEGER NOT NULL REFERENCES negocios(id) ON DELETE CASCADE,url TEXT NOT NULL,creado TEXT NOT NULL,modelo TEXT NOT NULL,texto TEXT NOT NULL,evidencias TEXT NOT NULL DEFAULT '{}');
+CREATE INDEX IF NOT EXISTS idx_informes_ia_negocio ON informes_ia(negocio_id,creado DESC);
+CREATE TABLE IF NOT EXISTS informes_ia_revisiones(id INTEGER PRIMARY KEY,informe_id INTEGER NOT NULL REFERENCES informes_ia(id) ON DELETE CASCADE,creado TEXT NOT NULL,texto TEXT NOT NULL,autor TEXT NOT NULL DEFAULT 'usuario');
+CREATE INDEX IF NOT EXISTS idx_informes_ia_revisiones ON informes_ia_revisiones(informe_id,creado DESC,id DESC);
+CREATE TABLE IF NOT EXISTS evaluaciones_ia(negocio_id INTEGER PRIMARY KEY REFERENCES negocios(id) ON DELETE CASCADE,fecha TEXT NOT NULL,modelo TEXT NOT NULL,respuesta TEXT NOT NULL,version TEXT NOT NULL DEFAULT '1');
+CREATE TABLE IF NOT EXISTS ia_ejecuciones(id INTEGER PRIMARY KEY,negocio_id INTEGER NOT NULL REFERENCES negocios(id) ON DELETE CASCADE,etapa TEXT NOT NULL,huella_entrada TEXT NOT NULL,modelo_solicitado TEXT NOT NULL,modelo_efectivo TEXT,prompt_version TEXT NOT NULL,esquema_version TEXT NOT NULL,politica_version TEXT NOT NULL,estado TEXT NOT NULL,creado TEXT NOT NULL,actualizado TEXT NOT NULL,respuesta TEXT NOT NULL DEFAULT '{}',evidencias TEXT NOT NULL DEFAULT '{}',uso TEXT NOT NULL DEFAULT '{}',error TEXT);
+CREATE INDEX IF NOT EXISTS idx_ia_ejecuciones_negocio ON ia_ejecuciones(negocio_id,creado DESC);
+CREATE TABLE IF NOT EXISTS ia_revisiones(negocio_id INTEGER NOT NULL REFERENCES negocios(id) ON DELETE CASCADE,decision TEXT NOT NULL,estado TEXT NOT NULL,valor TEXT,motivo TEXT,actualizado TEXT NOT NULL,PRIMARY KEY(negocio_id,decision));
 "#;
 pub fn init(conn: &Connection) -> Result<()> {
     conn.execute_batch(SCHEMA)?;
+    let revision_columns: Vec<String> = {
+        let mut stmt = conn.prepare("PRAGMA table_info(ia_revisiones)")?;
+        let columns = stmt
+            .query_map([], |r| r.get(1))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        columns
+    };
+    if !revision_columns.iter().any(|column| column == "valor") {
+        conn.execute("ALTER TABLE ia_revisiones ADD COLUMN valor TEXT", [])?;
+    }
     conn.execute(
         "INSERT OR IGNORE INTO web_estado(negocio_id,estado) SELECT id,'pendiente' FROM negocios",
         [],
@@ -152,20 +170,121 @@ pub fn search_query(n: &Negocio, address: Option<&str>, city: Option<&str>) -> S
     parts.join(" ")
 }
 pub fn configured() -> bool {
-    std::env::var("TAVILY_API_KEY").is_ok_and(|s| !s.trim().is_empty())
+    crate::openrouter::configured()
 }
 pub fn remaining(conn: &Connection) -> Result<i64> {
-    let period = chrono::Utc::now().format("%Y-%m").to_string();
+    let day = chrono::Utc::now().format("%Y-%m-%d").to_string();
     let used = conn
         .query_row(
-            "SELECT creditos FROM web_search_budget WHERE periodo=?1",
-            [period],
+            "SELECT creditos FROM web_search_daily_budget WHERE dia=?1",
+            [day],
             |r| r.get::<_, i64>(0),
         )
         .optional()?
         .unwrap_or(0);
-    Ok((1000 - used).max(0))
+    Ok((45 - used).max(0))
 }
+
+pub fn huella_evaluacion(conn: &Connection, id: i64) -> Result<String> {
+    let n = store::get_negocio(conn, id)?.context("Negocio no encontrado")?;
+    let estado = conn.query_row(
+        "SELECT estado,url_confirmada,generacion FROM web_estado WHERE negocio_id=?1",
+        [id],
+        |r| Ok(json!({"estado":r.get::<_,String>(0)?,"url":r.get::<_,Option<String>>(1)?,"generacion":r.get::<_,i64>(2)?})),
+    ).optional()?.unwrap_or(Value::Null);
+    let mut stmt = conn.prepare(
+        "SELECT url,estado,evidencias FROM web_candidatas WHERE negocio_id=?1 ORDER BY url",
+    )?;
+    let candidatas = stmt.query_map([id], |r| Ok(json!({"url":r.get::<_,String>(0)?,"estado":r.get::<_,String>(1)?,"evidencias":r.get::<_,String>(2)?})))?.collect::<rusqlite::Result<Vec<_>>>()?;
+    let descartado: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM negocios_descartados WHERE negocio_id=?1)",
+        [id],
+        |r| r.get(0),
+    )?;
+    let admisible: bool =
+        conn.query_row("SELECT admisible=1 FROM negocios WHERE id=?1", [id], |r| {
+            r.get(0)
+        })?;
+    let mut reviews_stmt=conn.prepare("SELECT decision,estado,valor,motivo FROM ia_revisiones WHERE negocio_id=?1 ORDER BY decision")?;
+    let revisiones=reviews_stmt.query_map([id],|r|Ok(json!({"decision":r.get::<_,String>(0)?,"estado":r.get::<_,String>(1)?,"valor":r.get::<_,Option<String>>(2)?,"motivo":r.get::<_,Option<String>>(3)?})))?.collect::<rusqlite::Result<Vec<_>>>()?;
+    let snapshot = json!({"id":n.id,"nombre":n.nombre,"municipio":n.municipio,"direccion":n.direccion,"telefono":n.telefono,"categoria":n.categoria,"sector":n.sector,"rubro":n.rubro,"admisible":admisible,"web":n.web,"estado_web":estado,"candidatas":candidatas,"descartado":descartado,"revisiones":revisiones});
+    use sha2::{Digest, Sha256};
+    Ok(hex::encode(Sha256::digest(serde_json::to_vec(&snapshot)?)))
+}
+
+pub fn huella_valor(value: &Value) -> Result<String> {
+    use sha2::{Digest, Sha256};
+    Ok(hex::encode(Sha256::digest(serde_json::to_vec(value)?)))
+}
+
+pub fn registrar_ejecucion_ia(
+    conn: &Connection,
+    id: i64,
+    etapa: &str,
+    fingerprint: &str,
+    modelo_solicitado: &str,
+    modelo_efectivo: Option<&str>,
+    estado: &str,
+    respuesta: &Value,
+    evidencias: &Value,
+    uso: &Value,
+    error: Option<&str>,
+) -> Result<()> {
+    conn.execute("INSERT INTO ia_ejecuciones(negocio_id,etapa,huella_entrada,modelo_solicitado,modelo_efectivo,prompt_version,esquema_version,politica_version,estado,creado,actualizado,respuesta,evidencias,uso,error) VALUES(?1,?2,?3,?4,?5,'1','1','1',?6,?7,?7,?8,?9,?10,?11)",params![id,etapa,fingerprint,modelo_solicitado,modelo_efectivo,estado,store::ahora(),respuesta.to_string(),evidencias.to_string(),uso.to_string(),error])?;
+    Ok(())
+}
+
+pub fn reservar_credito_ia(conn: &Connection) -> Result<bool> {
+    reserve_search_credit(conn)
+}
+
+fn aplicar_descarte_ia(
+    conn: &Connection,
+    id: i64,
+    n: &Negocio,
+    ai: &Value,
+    refs: &[Value],
+) -> Result<()> {
+    let dominios: std::collections::HashSet<_> = refs
+        .iter()
+        .filter_map(|reference| reference["url"].as_str())
+        .filter_map(|url| crate::public_http::normalize(url).ok())
+        .filter_map(|url| url.host_str().map(str::to_ascii_lowercase))
+        .collect();
+    if dominios.len() < 2 {
+        return Ok(());
+    }
+    let answers = &ai["answers"];
+    let activity = answers["activity"]["choice"].as_str().unwrap_or("");
+    let organization = answers["organization"]["choice"].as_str().unwrap_or("");
+    let activity_reviewed: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM ia_revisiones WHERE negocio_id=?1 AND decision='actividad' AND estado IN ('corregida','rechazada'))",[id],|r|r.get(0))?;
+    let organization_reviewed: bool = conn.query_row("SELECT EXISTS(SELECT 1 FROM ia_revisiones WHERE negocio_id=?1 AND decision='organizacion' AND estado IN ('corregida','rechazada'))",[id],|r|r.get(0))?;
+    let strength =
+        |answer: &Value, key: &str| -> f64 { answer["probabilities"][key].as_f64().unwrap_or(0.0) };
+    let reason = if activity == "closed_permanently"
+        && strength(&answers["activity"], activity) >= 0.99
+        && !activity_reviewed
+    {
+        Some("cierre_permanente_verificado")
+    } else if matches!(organization, "chain" | "franchise")
+        && strength(&answers["organization"], organization) >= 0.99
+        && !organization_reviewed
+    {
+        Some(if organization == "chain" {
+            "cadena_verificada"
+        } else {
+            "franquicia_verificada"
+        })
+    } else {
+        None
+    };
+    let Some(reason) = reason else { return Ok(()) };
+    let evidence = json!({"modelo":ai["model"],"respuesta":answers,"fuentes":refs,"negocio":n.nombre,"municipio":n.municipio});
+    // No pisa un descarte humano y conserva las fuentes para revisión/restauración.
+    conn.execute("INSERT OR IGNORE INTO negocios_descartados(negocio_id,fecha,motivo) SELECT id,?2,?3 FROM negocios WHERE id=?1 AND admisible=1 AND NOT EXISTS(SELECT 1 FROM negocios_descartados WHERE negocio_id=?1) AND NOT EXISTS(SELECT 1 FROM ia_overrides WHERE negocio_id=?1)",params![id,store::ahora(),format!("ia:{reason}:{}",evidence)])?;
+    Ok(())
+}
+
 pub fn reserve_search_credit(conn: &Connection) -> Result<bool> {
     let month = chrono::Utc::now().format("%Y-%m").to_string();
     let day = chrono::Utc::now().format("%Y-%m-%d").to_string();
@@ -178,20 +297,18 @@ pub fn reserve_search_credit(conn: &Connection) -> Result<bool> {
         "INSERT OR IGNORE INTO web_search_daily_budget(dia) VALUES(?1)",
         [&day],
     )?;
-    let monthly = tx.execute(
-        "UPDATE web_search_budget SET creditos=creditos+1 WHERE periodo=?1 AND creditos<1000",
-        [&month],
-    )?;
-    // Use the complete monthly allowance as soon as it is available. The daily
-    // counter is retained for usage visibility, but must not strand credits.
-    tx.execute(
-        "UPDATE web_search_daily_budget SET creditos=creditos+1 WHERE dia=?1",
+    let daily = tx.execute(
+        "UPDATE web_search_daily_budget SET creditos=creditos+1 WHERE dia=?1 AND creditos<45",
         [&day],
     )?;
-    if monthly == 0 {
+    if daily == 0 {
         tx.rollback()?;
         return Ok(false);
     }
+    tx.execute(
+        "UPDATE web_search_budget SET creditos=creditos+1 WHERE periodo=?1",
+        [&month],
+    )?;
     tx.commit()?;
     Ok(true)
 }
@@ -199,7 +316,7 @@ pub fn reserve_search_credit(conn: &Connection) -> Result<bool> {
 pub fn next_automatic_discovery(conn: &Connection) -> Result<Option<(i64, bool)>> {
     let candidato_revisable = "(json_extract(c.evidencias,'$.verificacion.revisada_en') IS NULL OR (json_extract(c.evidencias,'$.verificacion.resultado')='no_disponible' AND datetime(json_extract(c.evidencias,'$.verificacion.revisada_en'))<datetime('now','-1 day')) OR (json_extract(c.evidencias,'$.verificacion.resultado') NOT IN ('no_disponible','bloqueada_por_robots') AND datetime(json_extract(c.evidencias,'$.verificacion.revisada_en'))<datetime('now','-90 days')))";
     let busqueda_disponible = "((COALESCE(w.ultima_busqueda,'')='' OR datetime(w.ultima_busqueda)<datetime('now','-90 days'))
-               AND COALESCE((SELECT creditos FROM web_search_budget WHERE periodo=strftime('%Y-%m','now')),0)<1000)";
+               AND COALESCE((SELECT creditos FROM web_search_daily_budget WHERE dia=strftime('%Y-%m-%d','now')),0)<45)";
     let query = format!("SELECT n.id,
            {busqueda_disponible}
          FROM negocios n LEFT JOIN web_estado w ON w.negocio_id=n.id
@@ -224,6 +341,11 @@ pub fn info(conn: &Connection, id: i64) -> Result<WebInfo> {
     let state=conn.query_row("SELECT estado,url_confirmada,origen,ultima_busqueda,consulta,aviso FROM web_estado WHERE negocio_id=?1",[id],|r|Ok((r.get::<_,String>(0)?,r.get::<_,Option<String>>(1)?,r.get::<_,Option<String>>(2)?,r.get::<_,Option<String>>(3)?,r.get::<_,Option<String>>(4)?,r.get::<_,Option<String>>(5)?))).optional()?;
     let (estado, url_confirmada, origen, ultima_busqueda, query, aviso) =
         state.unwrap_or_else(|| ("pendiente".into(), None, None, None, None, None));
+    let mut evaluacion_ia: Option<Value> = conn.query_row("SELECT json_object('fecha',fecha,'modelo',modelo,'respuesta',json(respuesta)) FROM evaluaciones_ia WHERE negocio_id=?1",[id],|r|r.get::<_,String>(0)).optional()?.and_then(|s|serde_json::from_str(&s).ok());
+    if let Some(evaluation) = evaluacion_ia.as_mut() {
+        let execution = conn.query_row("SELECT json_object('estado',estado,'huella_entrada',huella_entrada,'creado',creado,'error',error) FROM ia_ejecuciones WHERE negocio_id=?1 AND etapa='evaluacion' ORDER BY id DESC LIMIT 1",[id],|r|r.get::<_,String>(0)).optional()?.and_then(|s|serde_json::from_str::<Value>(&s).ok());
+        evaluation["ejecucion"] = execution.unwrap_or(Value::Null);
+    }
     let mut stmt=conn.prepare("SELECT id,url,titulo,tipo,proveedor,consulta,posicion,fecha,estado,evidencias FROM web_candidatas WHERE negocio_id=?1 AND estado NOT IN ('descartada','confirmada') ORDER BY CASE WHEN posicion=1 THEN 0 ELSE 1 END,fecha DESC,id DESC")?;
     let rows = stmt.query_map([id], |r| {
         Ok(WebCandidata {
@@ -239,6 +361,19 @@ pub fn info(conn: &Connection, id: i64) -> Result<WebInfo> {
             evidencias: serde_json::from_str(&r.get::<_, String>(9)?).unwrap_or(json!({})),
         })
     })?;
+    let mut reviews_stmt=conn.prepare("SELECT negocio_id,decision,estado,valor,motivo,actualizado FROM ia_revisiones WHERE negocio_id=?1 ORDER BY decision")?;
+    let revisiones_ia = reviews_stmt
+        .query_map([id], |r| {
+            Ok(RevisionIA {
+                negocio_id: r.get(0)?,
+                decision: r.get(1)?,
+                estado: r.get(2)?,
+                valor: r.get(3)?,
+                motivo: r.get(4)?,
+                actualizado: r.get(5)?,
+            })
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
     Ok(WebInfo {
         estado,
         url_confirmada,
@@ -249,7 +384,119 @@ pub fn info(conn: &Connection, id: i64) -> Result<WebInfo> {
         buscador_configurado: configured(),
         creditos_restantes: remaining(conn)?,
         candidatas: rows.collect::<rusqlite::Result<Vec<_>>>()?,
+        evaluacion_ia,
+        revisiones_ia,
     })
+}
+
+pub fn actualizar_revision_ia(
+    conn: &Connection,
+    id: i64,
+    req: &ActualizarRevisionIA,
+) -> Result<RevisionIA> {
+    anyhow::ensure!(
+        matches!(
+            req.decision.as_str(),
+            "categoria" | "actividad" | "organizacion" | "web"
+        ),
+        "Decisión IA no válida"
+    );
+    anyhow::ensure!(
+        matches!(req.estado.as_str(), "revisada" | "corregida" | "rechazada"),
+        "Estado de revisión no válido"
+    );
+    anyhow::ensure!(
+        req.valor.as_ref().is_none_or(|value| value.len() <= 300),
+        "Valor de revisión demasiado largo"
+    );
+    anyhow::ensure!(
+        req.motivo
+            .as_ref()
+            .is_none_or(|reason| reason.len() <= 1000),
+        "Motivo de revisión demasiado largo"
+    );
+    if req.decision == "categoria" && req.estado == "corregida" {
+        let category = req
+            .valor
+            .as_deref()
+            .context("Indica la categoría corregida")?;
+        anyhow::ensure!(
+            crate::rubros::FILTROS
+                .iter()
+                .any(|(key, _)| *key == category),
+            "Categoría comercial no válida"
+        );
+    }
+    let tx = conn.unchecked_transaction()?;
+    if req.decision == "categoria" && req.estado == "corregida" {
+        let category = req.valor.as_deref().unwrap();
+        tx.execute("UPDATE negocios SET rubro=?2,evidencia_rubro=json_set(evidencia_rubro,'$.revision_humana',json(?3)) WHERE id=?1",params![id,category,json!({"valor":category,"motivo":req.motivo,"fecha":store::ahora()}).to_string()])?;
+    }
+    tx.execute("INSERT INTO ia_revisiones(negocio_id,decision,estado,valor,motivo,actualizado) VALUES(?1,?2,?3,?4,?5,?6) ON CONFLICT(negocio_id,decision) DO UPDATE SET estado=excluded.estado,valor=excluded.valor,motivo=excluded.motivo,actualizado=excluded.actualizado",params![id,req.decision,req.estado,req.valor,req.motivo,store::ahora()])?;
+    tx.commit()?;
+    conn.query_row("SELECT negocio_id,decision,estado,valor,motivo,actualizado FROM ia_revisiones WHERE negocio_id=?1 AND decision=?2",params![id,req.decision],|r|Ok(RevisionIA{negocio_id:r.get(0)?,decision:r.get(1)?,estado:r.get(2)?,valor:r.get(3)?,motivo:r.get(4)?,actualizado:r.get(5)?})).map_err(Into::into)
+}
+
+pub fn ultimo_informe_ia(conn: &Connection, id: i64) -> Result<Option<InformeIA>> {
+    conn.query_row("SELECT id,negocio_id,url,creado,modelo,COALESCE((SELECT texto FROM informes_ia_revisiones WHERE informe_id=informes_ia.id ORDER BY id DESC LIMIT 1),texto),evidencias FROM informes_ia WHERE negocio_id=?1 ORDER BY id DESC LIMIT 1",[id],|r|Ok(InformeIA{id:r.get(0)?,negocio_id:r.get(1)?,url:r.get(2)?,creado:r.get(3)?,modelo:r.get(4)?,texto:r.get(5)?,evidencias:serde_json::from_str(&r.get::<_,String>(6)?).unwrap_or(json!({}))})).optional().map_err(Into::into)
+}
+
+pub fn guardar_revision_informe_ia(conn: &Connection, id: i64, texto: &str) -> Result<InformeIA> {
+    let text = texto.trim();
+    anyhow::ensure!(
+        !text.is_empty() && text.len() <= 16_000,
+        "El texto revisado está vacío o excede el límite"
+    );
+    let report_id: Option<i64> = conn
+        .query_row(
+            "SELECT id FROM informes_ia WHERE negocio_id=?1 ORDER BY id DESC LIMIT 1",
+            [id],
+            |r| r.get(0),
+        )
+        .optional()?;
+    let report_id = report_id.context("No hay un informe IA para revisar")?;
+    conn.execute(
+        "INSERT INTO informes_ia_revisiones(informe_id,creado,texto) VALUES(?1,?2,?3)",
+        params![report_id, store::ahora(), text],
+    )?;
+    ultimo_informe_ia(conn, id)?.context("No se pudo recuperar el informe revisado")
+}
+
+pub fn guardar_informe_ia(
+    conn: &Connection,
+    id: i64,
+    url: &str,
+    modelo: &str,
+    texto: &str,
+    evidencias: &Value,
+) -> Result<InformeIA> {
+    conn.execute("INSERT INTO informes_ia(negocio_id,url,creado,modelo,texto,evidencias) VALUES(?1,?2,?3,?4,?5,?6)",params![id,url,store::ahora(),modelo,texto,evidencias.to_string()])?;
+    ultimo_informe_ia(conn, id)?.context("No se pudo recuperar el informe recién guardado")
+}
+
+pub fn evidencia_auditoria_para_ia(conn: &Connection, id: i64, url: &str) -> Result<Value> {
+    let mut stmt=conn.prepare("SELECT motor,dispositivo,version,fecha,estado,resultado FROM auditorias_tecnicas WHERE negocio_id=?1 AND url=?2 AND estado IN ('terminado','parcial') ORDER BY fecha DESC LIMIT 8")?;
+    let rows = stmt.query_map(params![id, url], |r| {
+        Ok((
+            r.get::<_, String>(0)?,
+            r.get::<_, String>(1)?,
+            r.get::<_, String>(2)?,
+            r.get::<_, String>(3)?,
+            r.get::<_, String>(4)?,
+            r.get::<_, String>(5)?,
+        ))
+    })?;
+    let mut informes = Vec::new();
+    for row in rows {
+        let (motor, dispositivo, version, fecha, estado, raw) = row?;
+        let data: Value = serde_json::from_str(&raw).unwrap_or(json!({}));
+        let scores = data.get("scores").cloned().unwrap_or(json!({}));
+        let issues=data.get("issues").and_then(Value::as_array).map(|items|items.iter().take(15).map(|item|json!({"code":item["code"],"title":item["title"],"severity":item["severity"],"category":item["category"],"url":item["url"],"details":item["details"],"recommendation":item["recommendation"]})).collect::<Vec<_>>()).unwrap_or_default();
+        let coverage = data.get("coverage").cloned().unwrap_or(json!({}));
+        let warnings = data.get("warnings").cloned().unwrap_or(json!([]));
+        informes.push(json!({"motor":motor,"dispositivo":dispositivo,"version":version,"fecha":fecha,"estado":estado,"scores":scores,"hallazgos":issues,"cobertura":coverage,"avisos":warnings}));
+    }
+    Ok(json!({"url":url,"informes":informes,"limite_informes":8}))
 }
 pub fn add_candidate(
     conn: &Connection,
@@ -420,9 +667,6 @@ pub fn organic(results: &Value) -> Option<(usize, &Value)> {
             && r["url"].as_str().is_some()
     })
 }
-fn organic_result(result: &Value) -> bool {
-    organic(&Value::Array(vec![result.clone()])).is_some()
-}
 fn field(row: &Value, key: &str) -> Option<String> {
     row[key]
         .as_str()
@@ -479,6 +723,17 @@ async fn registry(store: &Store) -> Result<Value> {
     Ok(records)
 }
 pub async fn discover(store: &Store, id: i64, allow_search: bool) -> Result<Value> {
+    {
+        let c = store.lock().unwrap();
+        let discarded: bool = c.query_row(
+            "SELECT EXISTS(SELECT 1 FROM negocios_descartados WHERE negocio_id=?1)",
+            [id],
+            |r| r.get(0),
+        )?;
+        if discarded {
+            return Ok(json!({"estado":"descartado"}));
+        }
+    }
     let n = {
         let c = store.lock().unwrap();
         store::get_negocio(&c, id)?.context("Negocio no encontrado")?
@@ -548,14 +803,15 @@ pub async fn discover(store: &Store, id: i64, allow_search: bool) -> Result<Valu
     let query = search_query(&n, address.as_deref(), city.as_deref());
     let mut notice = official_notice;
     let mut searched = false;
-    let key = std::env::var("TAVILY_API_KEY")
-        .ok()
-        .filter(|s| !s.trim().is_empty());
-    let key = if allow_search { key } else { None };
-    if let Some(key) = key {
+    if allow_search && configured() {
+        let input_fingerprint = {
+            let c = store.lock().unwrap();
+            huella_evaluacion(&c, id)?
+        };
+        let cache_key = format!("openrouter:{query}:{input_fingerprint}");
         let cached = {
             let c = store.lock().unwrap();
-            c.query_row("SELECT resultados FROM web_search_cache WHERE consulta=?1 AND datetime(creado)>datetime('now','-30 days')",[&query],|r|r.get::<_,String>(0)).optional()?
+            c.query_row("SELECT resultados FROM web_search_cache WHERE consulta=?1 AND datetime(creado)>datetime('now','-30 days')",[&cache_key],|r|r.get::<_,String>(0)).optional()?
         };
         let results = if let Some(c) = cached {
             searched = true;
@@ -566,69 +822,111 @@ pub async fn discover(store: &Store, id: i64, allow_search: bool) -> Result<Valu
                 reserve_search_credit(&c)?
             };
             if !reserved {
-                notice =
-                    Some("Límite gratuito diario o mensual alcanzado; búsqueda pausada.".into());
+                notice = Some(
+                    "Cuota gratuita diaria de OpenRouter agotada; búsqueda pausada hasta mañana."
+                        .into(),
+                );
                 json!([])
             } else {
-                searched = true;
-                let client = reqwest::Client::builder()
-                    .timeout(std::time::Duration::from_secs(25))
-                    .build()?;
-                let response=client.post("https://api.tavily.com/search").bearer_auth(&key).json(&json!({"query":query,"search_depth":"basic","auto_parameters":false,"include_answer":false,"include_raw_content":false,"include_images":false,"max_results":5,"include_usage":true})).send().await;
-                match response {
-                    Ok(r) if r.status().is_success() => {
-                        let v: Value = r.json().await?;
-                        let extra = v["usage"]["credits"]
-                            .as_i64()
-                            .unwrap_or(1)
-                            .saturating_sub(1);
+                match crate::openrouter::discover(
+                    &n.nombre,
+                    &n.municipio,
+                    address.as_deref(),
+                    n.telefono.as_deref(),
+                    crate::rubros::FILTROS,
+                )
+                .await
+                {
+                    Ok(ai) => {
+                        let answers = &ai["answers"];
+                        let annotations = crate::openrouter::citations(&ai);
+                        let refs = annotations
+                            .iter()
+                            .map(|(url, title)| json!({"url":url,"title":title}))
+                            .collect::<Vec<_>>();
+                        let category = answers["category"]["choice"].as_str().unwrap_or("");
                         let c = store.lock().unwrap();
-                        if extra > 0 {
-                            c.execute("UPDATE web_search_budget SET creditos=MIN(1000,creditos+?2) WHERE periodo=?1",params![chrono::Utc::now().format("%Y-%m").to_string(),extra])?;
+                        let current_fingerprint = huella_evaluacion(&c, id)?;
+                        let stale = current_fingerprint != input_fingerprint;
+                        let run_state = if stale { "obsoleta" } else { "aplicada" };
+                        registrar_ejecucion_ia(
+                            &c,
+                            id,
+                            "evaluacion",
+                            &input_fingerprint,
+                            crate::openrouter::DECISIONS_MODEL,
+                            ai["model"].as_str(),
+                            run_state,
+                            &ai,
+                            &json!({"fuentes":refs}),
+                            &ai["usage"],
+                            None,
+                        )?;
+                        if stale {
+                            c.execute("INSERT INTO evaluaciones_ia(negocio_id,fecha,modelo,respuesta,version) VALUES(?1,?2,?3,?4,'1') ON CONFLICT(negocio_id) DO UPDATE SET fecha=excluded.fecha,modelo=excluded.modelo,respuesta=excluded.respuesta,version=excluded.version",params![id,store::ahora(),ai["model"].as_str().unwrap_or(crate::openrouter::DECISIONS_MODEL),ai.to_string()])?;
+                            notice = Some("La ficha cambió mientras se evaluaba; el resultado se guardó como histórico y no se aplicó. Vuelve a buscar para evaluar los datos actuales.".into());
+                            json!({"resultados":[],"analisis":{},"obsoleta":true})
+                        } else {
+                            searched = true;
+                            c.execute("INSERT INTO evaluaciones_ia(negocio_id,fecha,modelo,respuesta,version) VALUES(?1,?2,?3,?4,'1') ON CONFLICT(negocio_id) DO UPDATE SET fecha=excluded.fecha,modelo=excluded.modelo,respuesta=excluded.respuesta,version=excluded.version",params![id,store::ahora(),ai["model"].as_str().unwrap_or(crate::openrouter::DECISIONS_MODEL),ai.to_string()])?;
+                            if crate::rubros::FILTROS.iter().any(|(id, _)| *id == category) {
+                                let existing = n.rubro.as_deref().unwrap_or("");
+                                let reviewed: bool=c.query_row("SELECT EXISTS(SELECT 1 FROM ia_revisiones WHERE negocio_id=?1 AND decision='categoria')",[id],|r|r.get(0))?;
+                                if (existing.is_empty() || existing == "otro") && !reviewed {
+                                    c.execute("UPDATE negocios SET rubro=?2,evidencia_rubro=json_set(evidencia_rubro,'$.openrouter_categoria',json(?3)) WHERE id=?1",params![id,category,json!({"modelo":ai["model"],"respuesta":answers["category"],"fuentes":refs}).to_string()])?;
+                                }
+                            }
+                            aplicar_descarte_ia(&c, id, &n, &ai, &refs)?;
+                            let result = json!({"resultados":refs,"analisis":{"modelo":ai["model"],"provider":ai["provider"],"id":ai["id"],"answers":answers,"usage":ai["usage"]}});
+                            c.execute("INSERT INTO web_search_cache(consulta,resultados,creado) VALUES(?1,?2,?3) ON CONFLICT(consulta) DO UPDATE SET resultados=excluded.resultados,creado=excluded.creado",params![cache_key,result.to_string(),store::ahora()])?;
+                            result
                         }
-                        let results = v["results"].clone();
-                        c.execute("INSERT INTO web_search_cache(consulta,resultados,creado) VALUES(?1,?2,?3) ON CONFLICT(consulta) DO UPDATE SET resultados=excluded.resultados,creado=excluded.creado",params![query,results.to_string(),store::ahora()])?;
-                        searched = true;
-                        results
                     }
-                    Ok(r) => {
+                    Err(err) => {
+                        let c = store.lock().unwrap();
+                        registrar_ejecucion_ia(
+                            &c,
+                            id,
+                            "evaluacion",
+                            &input_fingerprint,
+                            crate::openrouter::DECISIONS_MODEL,
+                            None,
+                            "error",
+                            &json!({}),
+                            &json!({}),
+                            &json!({}),
+                            Some(&err.to_string()),
+                        )?;
                         notice = Some(format!(
-                            "Buscador no disponible (HTTP {}).",
-                            r.status().as_u16()
+                            "OpenRouter no pudo completar la búsqueda gratuita: {err}"
                         ));
-                        json!([])
-                    }
-                    Err(_) => {
-                        notice=Some("Buscador temporalmente no disponible; se conservan las sugerencias anteriores.".into());
-                        json!([])
+                        json!({"resultados":[],"analisis":{}})
                     }
                 }
             }
         };
-        if let Some(rows) = results.as_array() {
+        if let Some(rows) = results["resultados"].as_array() {
             let c = store.lock().unwrap();
-            for (position, r) in rows
-                .iter()
-                .enumerate()
-                .filter(|(_, r)| organic_result(r))
-                .take(5)
-            {
-                if let Some(url) = r["url"].as_str() {
+            for (position, r) in rows.iter().enumerate().take(5) {
+                if let Some(url) = r["url"]
+                    .as_str()
+                    .filter(|u| public_http::normalize(u).is_ok())
+                {
                     add_candidate(
                         &c,
                         id,
                         url,
                         r["title"].as_str(),
-                        "Tavily",
+                        "OpenRouter Decisions Fast",
                         Some(&query),
                         Some(position as i64 + 1),
-                        &json!({"tipo_resultado":"organico","identidad_confirmada":false}),
+                        &json!({"tipo_resultado":"web_grounded_citation","identidad_confirmada":false,"analisis":results["analisis"],"fuente":{"url":url,"title":r["title"]}}),
                     )?;
                 }
             }
         }
     } else if allow_search {
-        notice=Some("Búsqueda automática global sin configurar. Puedes buscar en el navegador o introducir una URL.".into());
+        notice=Some("Búsqueda gratuita con OpenRouter sin configurar. Puedes consultar fuentes públicas o introducir una URL.".into());
     }
     // Contrastar candidatos públicos, sin convertir su posición de búsqueda en identidad.
     let candidates = {
@@ -726,6 +1024,19 @@ pub async fn discover(store: &Store, id: i64, allow_search: bool) -> Result<Valu
                     );
                 }
             }
+        }
+    }
+    {
+        let c = store.lock().unwrap();
+        let discarded: bool = c.query_row(
+            "SELECT EXISTS(SELECT 1 FROM negocios_descartados WHERE negocio_id=?1)",
+            [id],
+            |r| r.get(0),
+        )?;
+        if discarded {
+            return Ok(
+                json!({"estado":"descartado_ia","evaluacion":c.query_row("SELECT json(respuesta) FROM evaluaciones_ia WHERE negocio_id=?1",[id],|r|r.get::<_,String>(0)).optional()?.and_then(|s|serde_json::from_str::<Value>(&s).ok())}),
+            );
         }
     }
     let c = store.lock().unwrap();
@@ -973,7 +1284,7 @@ mod persistence_tests {
             1,
             "https://sugerida.example",
             None,
-            "Tavily",
+            "OpenRouter Decisions Fast",
             Some("consulta"),
             Some(1),
             &json!({}),
@@ -1046,7 +1357,7 @@ mod persistence_tests {
         );
     }
     #[test]
-    fn automatizacion_usa_tavily_aunque_ya_haya_candidata_osm() {
+    fn automatizacion_usa_openrouter_aunque_ya_haya_candidata_osm() {
         let c = db();
         add_candidate(
             &c,
@@ -1062,21 +1373,15 @@ mod persistence_tests {
         assert_eq!(next_automatic_discovery(&c).unwrap(), Some((1, true)));
 
         let day = chrono::Utc::now().format("%Y-%m-%d").to_string();
-        let month = chrono::Utc::now().format("%Y-%m").to_string();
         c.execute(
-            "INSERT INTO web_search_daily_budget(dia,creditos) VALUES(?1,35)",
+            "INSERT INTO web_search_daily_budget(dia,creditos) VALUES(?1,44)",
             [&day],
-        )
-        .unwrap();
-        c.execute(
-            "INSERT INTO web_search_budget(periodo,creditos) VALUES(?1,999)",
-            [&month],
         )
         .unwrap();
         assert_eq!(next_automatic_discovery(&c).unwrap(), Some((1, true)));
         c.execute(
-            "UPDATE web_search_budget SET creditos=1000 WHERE periodo=?1",
-            [&month],
+            "UPDATE web_search_daily_budget SET creditos=45 WHERE dia=?1",
+            [&day],
         )
         .unwrap();
         assert_eq!(next_automatic_discovery(&c).unwrap(), Some((1, false)));
